@@ -65,6 +65,9 @@ export const defaultProviderSettings = {
 		region: 'us-east-1', // add region setting
 		endpoint: '', // optionally allow overriding default
 	},
+	glm: {
+		apiKey: '',
+	},
 
 } as const
 
@@ -153,6 +156,10 @@ export const defaultModelsOfProvider = {
 	microsoftAzure: [],
 	awsBedrock: [],
 	liteLLM: [],
+	glm: [ // https://open.bigmodel.cn/
+		'glm-4.6',
+		'glm-4.5-air',
+	],
 
 
 } as const satisfies Record<ProviderName, string[]>
@@ -1449,6 +1456,58 @@ const openRouterSettings: VoidStaticProviderInfo = {
 
 
 
+// ---------------- GLM ----------------
+const glmModelOptions = {
+	'glm-4.6': { // GLM-4.6 - 对应Claude Code ANTHROPIC_DEFAULT_OPUS_MODEL/SONNET_MODEL
+		contextWindow: 1_000_000,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0.08, output: 0.08 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'anthropic-style',
+		supportsSystemMessage: 'separated',
+		reasoningCapabilities: false,
+	},
+	'glm-4.5-air': { // GLM-4.5-Air - 对应Claude Code ANTHROPIC_DEFAULT_HAIKU_MODEL
+		contextWindow: 1_000_000,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0.03, output: 0.03 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'anthropic-style',
+		supportsSystemMessage: 'separated',
+		reasoningCapabilities: false,
+	}
+} as const satisfies { [s: string]: VoidStaticModelInfo }
+
+const glmSettings: VoidStaticProviderInfo = {
+	modelOptions: glmModelOptions,
+	modelOptionsFallback: (modelName) => {
+		const lower = modelName.toLowerCase()
+		let fallbackName: keyof typeof glmModelOptions | null = null
+		// if (lower.includes('glm-4-plus') || lower.includes('glm-4-plus-latest')) fallbackName = 'glm-4-plus'
+		if (lower.includes('glm-4.6')) fallbackName = 'glm-4.6'
+		if (lower.includes('glm-4.5-air')) fallbackName = 'glm-4.5-air'
+		//if (lower.includes('glm-4-flash') || lower.includes('glm-4-flash-latest')) fallbackName = 'glm-4-flash'
+		if (fallbackName) return { modelName: fallbackName, recognizedModelName: fallbackName, ...glmModelOptions[fallbackName] }
+		return null
+	},
+	providerReasoningIOSettings: {
+		input: {
+			includeInPayload: (reasoningInfo) => {
+				// GLM作为Anthropic兼容提供商，可以参考Anthropic的实现
+				if (!reasoningInfo?.isReasoningEnabled) return null
+
+				if (reasoningInfo.type === 'budget_slider_value') {
+					return { thinking: { type: 'enabled', budget_tokens: reasoningInfo.reasoningBudget } }
+				}
+				return null
+			}
+		},
+	},
+}
+
+
 // ---------------- model settings of everything above ----------------
 
 const modelSettingsOfProvider: { [providerName in ProviderName]: VoidStaticProviderInfo } = {
@@ -1456,6 +1515,7 @@ const modelSettingsOfProvider: { [providerName in ProviderName]: VoidStaticProvi
 	anthropic: anthropicSettings,
 	xAI: xAISettings,
 	gemini: geminiSettings,
+	glm: glmSettings,
 
 	// open source models
 	deepseek: deepseekSettings,

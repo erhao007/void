@@ -19,11 +19,16 @@ export class StreamSplitter extends Transform {
 		super();
 	}
 
-	override _transform(chunk: Buffer, _encoding: string, callback: (error?: Error | null, data?: any) => void): void {
+	override _transform(chunk: any, _encoding: string, callback: (error?: Error | null, data?: any) => void): void {
 		if (!this.buffer) {
 			this.buffer = chunk;
 		} else {
-			this.buffer = Buffer.concat([this.buffer, chunk]);
+			this.buffer = Buffer.concat([this.buffer, chunk] as any);
+		}
+
+		if (!this.buffer) {
+			callback();
+			return;
 		}
 
 		let offset = 0;
@@ -33,17 +38,17 @@ export class StreamSplitter extends Transform {
 				break;
 			}
 
-			this.push(this.buffer.subarray(offset, index));
+			this.push(new Uint8Array(this.buffer.subarray(offset, index) as any));
 			offset = index + 1;
 		}
 
-		this.buffer = offset === this.buffer.length ? undefined : this.buffer.subarray(offset);
+		this.buffer = offset === this.buffer.length ? undefined : this.buffer.subarray(offset) as any;
 		callback();
 	}
 
 	override _flush(callback: (error?: Error | null, data?: any) => void): void {
 		if (this.buffer) {
-			this.push(this.buffer);
+			this.push(new Uint8Array(this.buffer));
 		}
 
 		callback();

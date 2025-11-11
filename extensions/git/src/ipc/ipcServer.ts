@@ -34,9 +34,9 @@ export async function createIPCServer(context?: string): Promise<IPCServer> {
 
 	if (!context) {
 		const buffer = await new Promise<Buffer>((c, e) => crypto.randomBytes(20, (err, buf) => err ? e(err) : c(buf)));
-		hash.update(buffer);
+		hash.update(buffer as any);
 	} else {
-		hash.update(context);
+		hash.update(context as any);
 	}
 
 	const ipcHandlePath = getIPCHandlePath(hash.digest('hex').substring(0, 10));
@@ -94,9 +94,9 @@ export class IPCServer implements IIPCServer, ITerminalEnvironmentProvider, Disp
 		}
 
 		const chunks: Buffer[] = [];
-		req.on('data', d => chunks.push(d));
+		req.on('data', d => chunks.push(d as Buffer));
 		req.on('end', () => {
-			const request = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+			const request = JSON.parse(Buffer.concat(chunks as any).toString('utf8'));
 			handler.handle(request).then(result => {
 				res.writeHead(200);
 				res.end(JSON.stringify(result));

@@ -31,21 +31,21 @@ class ProtocolBuffer {
 	private buffer: Buffer = Buffer.allocUnsafe(defaultSize);
 
 	public append(data: string | Buffer): void {
-		let toAppend: Buffer | null = null;
+			let toAppend!: Buffer;
 		if (Buffer.isBuffer(data)) {
 			toAppend = data;
 		} else {
-			toAppend = Buffer.from(data, 'utf8');
+			toAppend = Buffer.from(data, 'utf8') as any;
 		}
 		if (this.buffer.length - this.index >= toAppend.length) {
-			toAppend.copy(this.buffer, this.index, 0, toAppend.length);
+			(toAppend as any).copy(this.buffer, this.index, 0, toAppend.length);
 		} else {
 			const newSize = (Math.ceil((this.index + toAppend.length) / defaultSize) + 1) * defaultSize;
 			if (this.index === 0) {
 				this.buffer = Buffer.allocUnsafe(newSize);
-				toAppend.copy(this.buffer, 0, 0, toAppend.length);
+				(toAppend as any).copy(this.buffer, 0, 0, toAppend.length);
 			} else {
-				this.buffer = Buffer.concat([this.buffer.slice(0, this.index), toAppend], newSize);
+				this.buffer = Buffer.concat([this.buffer.slice(0, this.index), toAppend] as any, newSize);
 			}
 		}
 		this.index += toAppend.length;
@@ -85,7 +85,7 @@ class ProtocolBuffer {
 		while (sourceStart < this.index && (this.buffer[sourceStart] === backslashR || this.buffer[sourceStart] === backslashN)) {
 			sourceStart++;
 		}
-		this.buffer.copy(this.buffer, 0, sourceStart);
+		this.buffer.copy(this.buffer as any, 0, sourceStart);
 		this.index = this.index - sourceStart;
 		return result;
 	}

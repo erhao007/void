@@ -14,7 +14,7 @@ import { Transform } from 'stream';
  * is not encountered.
  */
 export class StreamSplitter extends Transform {
-	private buffer: Buffer | undefined;
+	private buffer: any;
 	private readonly splitter: number;
 	private readonly spitterLen: number;
 
@@ -46,17 +46,17 @@ export class StreamSplitter extends Transform {
 				break;
 			}
 
-			this.push(this.buffer.slice(offset, index + this.spitterLen));
+			this.push((this.buffer as any).slice(offset, index + this.spitterLen));
 			offset = index + this.spitterLen;
 		}
 
-		this.buffer = offset === this.buffer.length ? undefined : this.buffer.slice(offset);
+		this.buffer = offset === this.buffer.length ? undefined : (this.buffer as any).slice(offset);
 		callback();
 	}
 
 	override _flush(callback: (error?: Error | null, data?: any) => void): void {
 		if (this.buffer) {
-			this.push(this.buffer);
+			this.push(this.buffer as any);
 		}
 
 		callback();

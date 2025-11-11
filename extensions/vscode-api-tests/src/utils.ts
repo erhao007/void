@@ -24,7 +24,7 @@ export async function createRandomFile(contents: string | Uint8Array = '', dir: 
 	} else {
 		fakeFile = vscode.Uri.parse(`${testFs.scheme}:/${rndName() + ext}`);
 	}
-	testFs.writeFile(fakeFile, Buffer.from(contents), { create: true, overwrite: true });
+	testFs.writeFile(fakeFile, new Uint8Array(contents as any), { create: true, overwrite: true });
 	return fakeFile;
 }
 

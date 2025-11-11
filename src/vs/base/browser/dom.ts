@@ -1530,8 +1530,8 @@ export function triggerDownload(dataOrUri: Uint8Array | URI, name: string): void
 	if (URI.isUri(dataOrUri)) {
 		url = dataOrUri.toString(true);
 	} else {
-		const blob = new Blob([dataOrUri]);
-		url = URL.createObjectURL(blob);
+				const blob = new Blob([dataOrUri.buffer as ArrayBuffer]);
+				url = URL.createObjectURL(blob);
 
 		// Ensure to free the data from DOM eventually
 		setTimeout(() => URL.revokeObjectURL(url));

@@ -16,7 +16,7 @@ import { IPathWithLineAndColumn, isValidBasename, parseLineAndColumnAware, sanit
 import { Event } from '../../base/common/event.js';
 import { getPathLabel } from '../../base/common/labels.js';
 import { Schemas } from '../../base/common/network.js';
-import { basename, resolve } from '../../base/common/path.js';
+import { basename, resolve, join } from '../../base/common/path.js';
 import { mark } from '../../base/common/performance.js';
 import { IProcessEnvironment, isMacintosh, isWindows, OS } from '../../base/common/platform.js';
 import { cwd } from '../../base/common/process.js';
@@ -199,12 +199,18 @@ class CodeMain {
 
 		// Policy
 		let policyService: IPolicyService | undefined;
-		if (isWindows && productService.win32RegValueName) {
+		const policyFile = environmentMainService.policyFile || URI.file(join(process.cwd(), 'policies.json'));
+		console.log('Policy initialization:', {
+			hasPolicyFile: !!environmentMainService.policyFile,
+			isDev: !!process.env.VSCODE_DEV,
+			policyFile: policyFile
+		});
+		if (policyFile) {
+			policyService = disposables.add(new FilePolicyService(policyFile, fileService, logService));
+		} else if (isWindows && productService.win32RegValueName) {
 			policyService = disposables.add(new NativePolicyService(logService, productService.win32RegValueName));
 		} else if (isMacintosh && productService.darwinBundleIdentifier) {
 			policyService = disposables.add(new NativePolicyService(logService, productService.darwinBundleIdentifier));
-		} else if (environmentMainService.policyFile) {
-			policyService = disposables.add(new FilePolicyService(environmentMainService.policyFile, fileService, logService));
 		} else {
 			policyService = new NullPolicyService();
 		}

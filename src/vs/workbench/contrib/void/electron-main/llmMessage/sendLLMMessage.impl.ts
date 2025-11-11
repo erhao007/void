@@ -167,6 +167,10 @@ const newOpenAICompatibleSDK = async ({ settingsOfProvider, providerName, includ
 		const thisConfig = settingsOfProvider[providerName]
 		return new OpenAI({ baseURL: 'https://api.mistral.ai/v1', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
 	}
+	else if (providerName === 'glm') {
+		const thisConfig = settingsOfProvider[providerName]
+		return new OpenAI({ baseURL: 'https://open.bigmodel.cn/api/paas/v4', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
+	}
 
 	else throw new Error(`Void providerName was invalid: ${providerName}.`)
 }
@@ -462,6 +466,7 @@ const sendAnthropicChat = async ({ messages, providerName, onText, onFinalMessag
 	} = getModelCapabilities(providerName, modelName_, overridesOfModel)
 
 	const thisConfig = settingsOfProvider.anthropic
+
 	const { providerReasoningIOSettings } = getProviderCapabilities(providerName)
 
 	// reasoning
@@ -508,6 +513,130 @@ const sendAnthropicChat = async ({ messages, providerName, onText, onFinalMessag
 	let fullToolName = ''
 	let fullToolParams = ''
 
+
+	const runOnText = () => {
+		onText({
+			fullText,
+			fullReasoning,
+			toolCall: !fullToolName ? undefined : { name: fullToolName, rawParams: {}, isDone: false, doneParams: [], id: 'dummy' },
+		})
+	}
+	// there are no events for tool_use, it comes in at the end
+	stream.on('streamEvent', e => {
+		// start block
+		if (e.type === 'content_block_start') {
+			if (e.content_block.type === 'text') {
+				if (fullText) fullText += '\n\n' // starting a 2nd text block
+				fullText += e.content_block.text
+				runOnText()
+			}
+			else if (e.content_block.type === 'thinking') {
+				if (fullReasoning) fullReasoning += '\n\n' // starting a 2nd reasoning block
+				fullReasoning += e.content_block.thinking
+				runOnText()
+			}
+			else if (e.content_block.type === 'redacted_thinking') {
+				console.log('delta', e.content_block.type)
+				if (fullReasoning) fullReasoning += '\n\n' // starting a 2nd reasoning block
+				fullReasoning += '[redacted_thinking]'
+				runOnText()
+			}
+			else if (e.content_block.type === 'tool_use') {
+				fullToolName += e.content_block.name ?? '' // anthropic gives us the tool name in the start block
+				runOnText()
+			}
+		}
+
+		// delta
+		else if (e.type === 'content_block_delta') {
+			if (e.delta.type === 'text_delta') {
+				fullText += e.delta.text
+				runOnText()
+			}
+			else if (e.delta.type === 'thinking_delta') {
+				fullReasoning += e.delta.thinking
+				runOnText()
+			}
+			else if (e.delta.type === 'input_json_delta') { // tool use
+				fullToolParams += e.delta.partial_json ?? '' // anthropic gives us the partial delta (string) here - https://docs.anthropic.com/en/api/messages-streaming
+				runOnText()
+			}
+		}
+	})
+
+	// on done - (or when error/fail) - this is called AFTER last streamEvent
+	stream.on('finalMessage', (response) => {
+		const anthropicReasoning = response.content.filter(c => c.type === 'thinking' || c.type === 'redacted_thinking')
+		const tools = response.content.filter(c => c.type === 'tool_use')
+		// console.log('TOOLS!!!!!!', JSON.stringify(tools, null, 2))
+		// console.log('TOOLS!!!!!!', JSON.stringify(response, null, 2))
+		const toolCall = tools[0] && rawToolCallObjOfAnthropicParams(tools[0])
+		const toolCallObj = toolCall ? { toolCall } : {}
+
+		onFinalMessage({ fullText, fullReasoning, anthropicReasoning, ...toolCallObj })
+	})
+	// on error
+	stream.on('error', (error) => {
+		if (error instanceof Anthropic.APIError && error.status === 401) { onError({ message: invalidApiKeyMessage(providerName), fullError: error }) }
+		else { onError({ message: error + '', fullError: error }) }
+	})
+	_setAborter(() => stream.controller.abort())
+}
+
+// ------------ GLM (Anthropic Compatible) ------------
+const sendGLMChat = async ({ messages, providerName, onText, onFinalMessage, onError, settingsOfProvider, modelSelectionOptions, overridesOfModel, modelName: modelName_, _setAborter, separateSystemMessage, chatMode, mcpTools }: SendChatParams_Internal) => {
+	const {
+		modelName,
+		specialToolFormat,
+	} = getModelCapabilities(providerName, modelName_, overridesOfModel)
+
+	const thisConfig = settingsOfProvider.glm
+
+	const { providerReasoningIOSettings } = getProviderCapabilities(providerName)
+
+	// reasoning
+	const reasoningInfo = getSendableReasoningInfo('Chat', providerName, modelName_, modelSelectionOptions, overridesOfModel) // user's modelName_ here
+	const includeInPayload = providerReasoningIOSettings?.input?.includeInPayload?.(reasoningInfo) || {}
+
+	// anthropic-specific - max tokens
+	const maxTokens = getReservedOutputTokenSpace(providerName, modelName_, { isReasoningEnabled: !!reasoningInfo?.isReasoningEnabled, overridesOfModel })
+
+	// tools
+	const potentialTools = anthropicTools(chatMode, mcpTools)
+	const nativeToolsObj = potentialTools && specialToolFormat === 'anthropic-style' ?
+		{ tools: potentialTools, tool_choice: { type: 'auto' } } as const
+		: {}
+
+	// GLM Anthropic compatible instance
+	const anthropic = new Anthropic({
+		apiKey: thisConfig.apiKey,
+		baseURL: 'https://open.bigmodel.cn/api/anthropic',
+		dangerouslyAllowBrowser: true
+	});
+
+	const stream = anthropic.messages.stream({
+		system: separateSystemMessage ?? undefined,
+		messages: messages as AnthropicLLMChatMessage[],
+		model: modelName,
+		max_tokens: maxTokens ?? 4_096, // anthropic requires this
+		...includeInPayload,
+		...nativeToolsObj,
+
+	})
+
+	// manually parse out tool results if XML
+	if (!specialToolFormat) {
+		const { newOnText, newOnFinalMessage } = extractXMLToolsWrapper(onText, onFinalMessage, chatMode, mcpTools)
+		onText = newOnText
+		onFinalMessage = newOnFinalMessage
+	}
+
+	// when receive text
+	let fullText = ''
+	let fullReasoning = ''
+
+	let fullToolName = ''
+	let fullToolParams = ''
 
 	const runOnText = () => {
 		onText({
@@ -854,6 +983,9 @@ type CallFnOfProvider = {
 	}
 }
 
+// Debug: Log when the provider implementation object is created
+console.log('Debug - Creating sendLLMMessageToProviderImplementation with providers:', ['anthropic', 'openAI', 'xAI', 'gemini', 'mistral', 'ollama', 'openAICompatible', 'openRouter', 'vLLM', 'deepseek', 'groq', 'lmStudio', 'liteLLM', 'googleVertex', 'microsoftAzure', 'awsBedrock', 'glm'])
+
 export const sendLLMMessageToProviderImplementation = {
 	anthropic: {
 		sendChat: sendAnthropicChat,
@@ -934,6 +1066,11 @@ export const sendLLMMessageToProviderImplementation = {
 	},
 	awsBedrock: {
 		sendChat: (params) => _sendOpenAICompatibleChat(params),
+		sendFIM: null,
+		list: null,
+	},
+	glm: {
+		sendChat: (params) => sendGLMChat(params),
 		sendFIM: null,
 		list: null,
 	},

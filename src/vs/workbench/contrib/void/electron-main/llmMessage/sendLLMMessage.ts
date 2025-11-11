@@ -101,6 +101,12 @@ export const sendLLMMessage = async ({
 
 
 	try {
+		// Debug: Log available providers and the requested provider
+		console.log('Debug - Available providers:', Object.keys(sendLLMMessageToProviderImplementation))
+		console.log('Debug - Requested providerName:', providerName)
+		console.log('Debug - Provider in implementation?:', providerName in sendLLMMessageToProviderImplementation)
+		console.log('Debug - Implementation lookup result:', sendLLMMessageToProviderImplementation[providerName])
+		
 		const implementation = sendLLMMessageToProviderImplementation[providerName]
 		if (!implementation) {
 			onError({ message: `Error: Provider "${providerName}" not recognized.`, fullError: null })

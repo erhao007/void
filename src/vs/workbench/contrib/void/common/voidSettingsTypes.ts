@@ -106,6 +106,9 @@ export const displayInfoOfProviderName = (providerName: ProviderName): DisplayIn
 	else if (providerName === 'awsBedrock') {
 		return { title: 'AWS Bedrock', }
 	}
+	else if (providerName === 'glm') {
+		return { title: 'GLM (智谱 AI)', }
+	}
 
 	throw new Error(`descOfProviderName: Unknown provider name: "${providerName}"`)
 }
@@ -120,6 +123,7 @@ export const subTextMdOfProviderName = (providerName: ProviderName): string => {
 	if (providerName === 'groq') return 'Get your [API Key here](https://console.groq.com/keys).'
 	if (providerName === 'xAI') return 'Get your [API Key here](https://console.x.ai).'
 	if (providerName === 'mistral') return 'Get your [API Key here](https://console.mistral.ai/api-keys).'
+	if (providerName === 'glm') return 'Get your [API Key here](https://open.bigmodel.cn/usercenter/apikeys). Read about GLM API [here](https://open.bigmodel.cn/docs/).'
 	if (providerName === 'openAICompatible') return `Use any provider that's OpenAI-compatible (use this for llama.cpp and more).`
 	if (providerName === 'googleVertex') return 'You must authenticate before using Vertex with Void. Read more about endpoints [here](https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/call-vertex-using-openai-library), and regions [here](https://cloud.google.com/vertex-ai/docs/general/locations#available-regions).'
 	if (providerName === 'microsoftAzure') return 'Read more about endpoints [here](https://learn.microsoft.com/en-us/rest/api/aifoundry/model-inference/get-chat-completions/get-chat-completions?view=rest-aifoundry-model-inference-2024-05-01-preview&tabs=HTTP), and get your API key [here](https://learn.microsoft.com/en-us/azure/search/search-security-api-keys?tabs=rest-use%2Cportal-find%2Cportal-query#find-existing-keys).'
@@ -150,13 +154,14 @@ export const displayInfoOfSettingName = (providerName: ProviderName, settingName
 						providerName === 'openRouter' ? 'sk-or-key...' : // sk-or-v1-key
 							providerName === 'gemini' ? 'AIzaSy...' :
 								providerName === 'groq' ? 'gsk_key...' :
-									providerName === 'openAICompatible' ? 'sk-key...' :
-										providerName === 'xAI' ? 'xai-key...' :
-											providerName === 'mistral' ? 'api-key...' :
-												providerName === 'googleVertex' ? 'AIzaSy...' :
-													providerName === 'microsoftAzure' ? 'key-...' :
-														providerName === 'awsBedrock' ? 'key-...' :
-															'',
+									providerName === 'glm' ? 'glm-api-key...' :
+										providerName === 'openAICompatible' ? 'sk-key...' :
+											providerName === 'xAI' ? 'xai-key...' :
+												providerName === 'mistral' ? 'api-key...' :
+													providerName === 'googleVertex' ? 'AIzaSy...' :
+														providerName === 'microsoftAzure' ? 'key-...' :
+															providerName === 'awsBedrock' ? 'key-...' :
+																'',
 
 			isPasswordField: true,
 		}
@@ -350,6 +355,12 @@ export const defaultSettingsOfProvider: SettingsOfProvider = {
 		...defaultCustomSettings,
 		...defaultProviderSettings.awsBedrock,
 		...modelInfoOfDefaultModelNames(defaultModelsOfProvider.awsBedrock),
+		_didFillInProviderSettings: undefined,
+	},
+	glm: {
+		...defaultCustomSettings,
+		...defaultProviderSettings.glm,
+		...modelInfoOfDefaultModelNames(defaultModelsOfProvider.glm),
 		_didFillInProviderSettings: undefined,
 	},
 }

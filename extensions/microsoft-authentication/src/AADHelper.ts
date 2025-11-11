@@ -551,7 +551,7 @@ export class AzureActiveDirectoryService {
 			throw e;
 		}
 
-		const id = `${claims.tid}/${(claims.oid ?? (claims.altsecid ?? '' + claims.ipd ?? ''))}`;
+		const id = `${claims.tid}/${String(claims.oid || claims.altsecid || '')}`;
 		const sessionId = existingId || `${id}/${randomUUID()}`;
 		this._logger.trace(`[${scopeData.scopeStr}] '${sessionId}' Token response parsed successfully.`);
 		return {
@@ -577,7 +577,7 @@ export class AzureActiveDirectoryService {
 	private convertToSessionSync(token: IToken): vscode.AuthenticationSession {
 		return {
 			id: token.sessionId,
-			accessToken: token.accessToken!,
+			accessToken: token.accessToken || '',
 			idToken: token.idToken,
 			account: token.account,
 			scopes: token.scope.split(' ')

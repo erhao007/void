@@ -111,8 +111,8 @@ class ObjectCollectionBuffer<T extends ObjectCollectionBufferPropertySpec[]> ext
 		super();
 
 		this.view = new Float32Array(capacity * propertySpecs.length);
-		this.buffer = this.view.buffer;
-		this._entrySize = propertySpecs.length;
+				this.buffer = this.view.buffer as ArrayBuffer;
+				this._entrySize = propertySpecs.length;
 		for (let i = 0; i < propertySpecs.length; i++) {
 			const spec = {
 				offset: i,
@@ -155,9 +155,9 @@ class ObjectCollectionBuffer<T extends ObjectCollectionBufferPropertySpec[]> ext
 	private _expandBuffer() {
 		this.capacity *= 2;
 		const newView = new Float32Array(this.capacity * this._entrySize);
-		newView.set(this.view);
-		this.view = newView;
-		this.buffer = this.view.buffer;
+				newView.set(this.view);
+				this.view = newView;
+				this.buffer = this.view.buffer as ArrayBuffer;
 	}
 }
 

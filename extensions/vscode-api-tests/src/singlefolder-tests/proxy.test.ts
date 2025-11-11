@@ -252,11 +252,11 @@ export const middlewareAuth =
 				return sendAuthRequired();
 			}
 			const [proxyUser, proxyPass] = Buffer.from(
-				proxyAuth.replace('Basic ', ''),
-				'base64'
-			)
-				.toString()
-				.split(':');
+					proxyAuth.replace('Basic ', ''),
+					'base64'
+				)
+					.toString()
+					.split(':');
 
 			if (!dynamic && !!(!!user && !!pass)) {
 				if (user !== proxyUser || pass !== proxyPass) {

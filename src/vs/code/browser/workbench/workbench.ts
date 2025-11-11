@@ -95,7 +95,7 @@ class ServerKeyedAESCrypto implements ISecretStorageCrypto {
 	async unseal(data: string): Promise<string> {
 		// encrypted should contain, in order: the key (32-byte), the IV for AES-GCM (12-byte) and the ciphertext (which has the GCM auth tag at the end)
 		// Minimum length must be 44 (key+IV length) + 16 bytes (1 block encrypted with AES - regardless of key size)
-		const dataUint8Array = decodeBase64(data);
+		const dataUint8Array = decodeBase64(data).buffer;
 
 		if (dataUint8Array.byteLength < 60) {
 			throw Error('Invalid length for the value for credentials.crypto');
@@ -107,11 +107,11 @@ class ServerKeyedAESCrypto implements ISecretStorageCrypto {
 		const cipherText = dataUint8Array.slice(keyLength + AESConstants.IV_LENGTH);
 
 		// Do the decryption and parse the result as JSON
-		const key = await this.getKey(clientKey.buffer);
+		const key = await this.getKey(clientKey);
 		const decrypted = await mainWindow.crypto.subtle.decrypt(
-			{ name: AESConstants.ALGORITHM as const, iv: iv.buffer },
+			{ name: AESConstants.ALGORITHM as const, iv: iv.buffer as ArrayBuffer },
 			key,
-			cipherText.buffer
+			cipherText.buffer as ArrayBuffer
 		);
 
 		return new TextDecoder().decode(new Uint8Array(decrypted));

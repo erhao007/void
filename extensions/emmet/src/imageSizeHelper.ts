@@ -39,8 +39,8 @@ function getImageSizeFromFile(file: string): Promise<ImageInfoWithScale | undefi
 		if (isDataUrl) {
 			// NB should use sync version of `sizeOf()` for buffers
 			try {
-				const data = Buffer.from(file.slice(isDataUrl[0].length), 'base64');
-				return resolve(sizeForFileName('', imageSize(data)));
+				const data = Buffer.from(file.slice(isDataUrl[0].length), 'base64') as any;
+				return resolve(sizeForFileName('', imageSize(data as any)));
 			} catch (err) {
 				return reject(err);
 			}
@@ -73,9 +73,9 @@ function getImageSizeFromURL(urlStr: string): Promise<ImageInfoWithScale | undef
 			const chunks: Buffer[] = [];
 			let bufSize = 0;
 
-			const trySize = (chunks: Buffer[]) => {
+			const trySize = (chunks: any[]) => {
 				try {
-					const size: ISizeCalculationResult = imageSize(Buffer.concat(chunks, bufSize));
+					const size: ISizeCalculationResult = imageSize(Buffer.concat(chunks as any, bufSize) as any);
 					resp.removeListener('data', onData);
 					resp.destroy(); // no need to read further
 					resolve(sizeForFileName(path.basename(urlPath), size));

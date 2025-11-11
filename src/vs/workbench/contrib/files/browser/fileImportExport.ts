@@ -717,10 +717,10 @@ export class FileDownload {
 			}));
 
 			listenStream(sourceStream, {
-				onData: data => {
-					target.write(data.buffer);
-					this.reportProgress(contents.name, contents.size, data.byteLength, operation);
-				},
+																			onData: data => {
+																												target.write(data.buffer as BufferSource);
+																												this.reportProgress(contents.name, contents.size, data.byteLength, operation);
+																			},
 				onError: error => {
 					disposables.dispose();
 					reject(error);
@@ -736,9 +736,9 @@ export class FileDownload {
 	private async downloadFileUnbufferedBrowser(resource: URI, target: FileSystemWritableFileStream, operation: IDownloadOperation, token: CancellationToken): Promise<void> {
 		const contents = await this.fileService.readFile(resource, undefined, token);
 		if (!token.isCancellationRequested) {
-			target.write(contents.value.buffer);
-			this.reportProgress(contents.name, contents.size, contents.value.byteLength, operation);
-		}
+									target.write(contents.value.buffer.buffer as BufferSource);
+									this.reportProgress(contents.name, contents.size, contents.value.byteLength, operation);
+							}
 
 		target.close();
 	}

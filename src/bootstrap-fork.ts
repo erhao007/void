@@ -123,15 +123,15 @@ function pipeLoggingToParent(): void {
 
 		Object.defineProperty(stream, 'write', {
 			set: () => { },
-			get: () => (chunk: string | Buffer | Uint8Array, encoding: BufferEncoding | undefined, callback: ((err?: Error | undefined) => void) | undefined) => {
-				buf += chunk.toString(encoding);
-				const eol = buf.length > MAX_STREAM_BUFFER_LENGTH ? buf.length : buf.lastIndexOf('\n');
-				if (eol !== -1) {
-					console[severity](buf.slice(0, eol));
-					buf = buf.slice(eol + 1);
-				}
+			get: () => (chunk: string | Buffer | Uint8Array, encoding: BufferEncoding | undefined, callback: ((err?: Error | null | undefined) => void) | undefined) => {
+									buf += chunk.toString(encoding);
+									const eol = buf.length > MAX_STREAM_BUFFER_LENGTH ? buf.length : buf.lastIndexOf('\n');
+									if (eol !== -1) {
+											console[severity](buf.slice(0, eol));
+											buf = buf.slice(eol + 1);
+									}
 
-				original.call(stream, chunk, encoding, callback);
+									original.call(stream, chunk, encoding, callback);
 			},
 		});
 	}

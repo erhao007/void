@@ -245,24 +245,26 @@ const createServerInner = async (ipcAddress: string) => {
 const createServerInstance = (ipcAddress: string) =>
 	new Promise<Server>((resolve, reject) => {
 		const s = createServer(socket => {
-			const data: Buffer[] = [];
-			socket.on('data', async chunk => {
-				if (chunk[chunk.length - 1] !== 0) {
+			const data: Uint8Array[] = [];
+			socket.on('data', async (chunk: any) => {
+				const bufferChunk = Buffer.from(chunk);
+				if (bufferChunk[bufferChunk.length - 1] !== 0) {
 					// terminated with NUL byte
-					data.push(chunk);
+					data.push(bufferChunk as any as Uint8Array);
 					return;
 				}
 
-				data.push(chunk.slice(0, -1));
+				data.push(bufferChunk.slice(0, -1) as any as Uint8Array);
 
 				try {
+					const jsonString = JSON.parse((Buffer.concat(data.map(d => Buffer.from(d as any)) as any) as any).toString());
 					await vscode.commands.executeCommand(
 						'extension.js-debug.autoAttachToProcess',
-						JSON.parse(Buffer.concat(data).toString()),
+						jsonString,
 					);
-					socket.write(Buffer.from([0]));
+					socket.write(Buffer.from([0]) as any);
 				} catch (err) {
-					socket.write(Buffer.from([1]));
+					socket.write(Buffer.from([1]) as any);
 					console.error(err);
 				}
 			});

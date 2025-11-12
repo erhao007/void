@@ -1,0 +1,485 @@
+/*--------------------------------------------------------------------------------------
+ *  Copyright 2025 Glass Devtools, Inc. All rights reserved.
+ *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
+ *--------------------------------------------------------------------------------------*/
+
+export type SupportedLanguage = 'en-US' | 'zh-CN';
+
+export interface I18nService {
+	readonly currentLanguage: SupportedLanguage;
+	readonly onDidChangeLanguage: (listener: (language: SupportedLanguage) => void) => void;
+
+	t(languageKey: string, defaultValue?: string, variables?: Record<string, any>): string;
+	changeLanguage(language: SupportedLanguage): Promise<void>;
+}
+
+export interface TranslationResource {
+	[key: string]: string | TranslationResource;
+}
+
+class Emitter<T> {
+	private listeners: Array<(value: T) => void> = [];
+
+	fire(value: T) {
+		this.listeners.forEach(listener => listener(value));
+	}
+
+	on(listener: (value: T) => void) {
+		this.listeners.push(listener);
+		return () => {
+			this.listeners = this.listeners.filter(l => l !== listener);
+		};
+	}
+}
+
+class I18nServiceImpl implements I18nService {
+	get currentLanguage(): SupportedLanguage {
+		return this._currentLanguage;
+	}
+
+	readonly onDidChangeLanguage: (listener: (language: SupportedLanguage) => void) => void;
+
+	private _currentLanguage: SupportedLanguage = 'en-US';
+	private _onDidChangeLanguage = new Emitter<SupportedLanguage>();
+	private translations: Map<SupportedLanguage, TranslationResource> = new Map();
+	private fallbackTranslations: TranslationResource = {};
+
+	constructor() {
+		this.onDidChangeLanguage = this._onDidChangeLanguage.on.bind(this._onDidChangeLanguage);
+		this.initializeTranslations();
+	}
+
+	/**
+	 * Translate a language key to the current language
+	 * @param languageKey - Dot notation key (e.g., 'settings.title', 'chat.placeholder')
+	 * @param defaultValue - Default value if translation not found
+	 * @param variables - Variables to replace in the translation string (e.g., { fromEditor: 'VS Code' })
+	 */
+	t(languageKey: string, defaultValue?: string, variables?: Record<string, any>): string {
+		const keys = languageKey.split('.');
+		let current: any = this.translations.get(this._currentLanguage);
+
+		if (!current) {
+			return defaultValue || languageKey;
+		}
+
+		for (const key of keys) {
+			if (current && typeof current === 'object' && key in current) {
+				current = current[key];
+			} else {
+				// Try fallback to English
+				current = this.fallbackTranslations;
+				for (const fallbackKey of keys) {
+					if (current && typeof current === 'object' && fallbackKey in current) {
+						current = current[fallbackKey];
+					} else {
+						current = null;
+						break;
+					}
+				}
+				break;
+			}
+		}
+
+		if (typeof current === 'string') {
+			// Replace template variables
+			if (variables) {
+				return current.replace(/\${(\w+)}/g, (match, key) => {
+					return variables[key] !== undefined ? String(variables[key]) : match;
+				});
+			}
+			return current;
+		}
+
+		return defaultValue || languageKey;
+	}
+
+	async changeLanguage(language: SupportedLanguage): Promise<void> {
+		if (this._currentLanguage === language) return;
+
+		this._currentLanguage = language;
+		await this.loadTranslations(language);
+		this._onDidChangeLanguage.fire(language);
+	}
+
+	private async initializeTranslations(): Promise<void> {
+		// Load default language (English)
+		await this.loadTranslations('en-US');
+		this.fallbackTranslations = this.translations.get('en-US') || {};
+
+		// Try to load user's preferred language from settings later
+		// For now, default to English
+	}
+
+	// 内联翻译数据，避免动态import JSON文件的MIME类型问题
+	private translationData: Record<SupportedLanguage, TranslationResource> = {
+		'zh-CN': {
+			settings: {
+				title: "设置",
+				language: {
+					'title': '语言',
+					'description': '选择您首选的Void界面语言。',
+					'english': 'English',
+					'chinese': '简体中文',
+					'restartNote': '更改语言后需要重新启动应用程序才能生效。'
+				},
+				restartNote: "更改语言后需要重新启动应用程序才能生效。",
+				ok: "确定",
+				cancel: "取消"
+			},
+			chat: {
+				title: "聊天",
+				newChat: "新建聊天",
+				inputPlaceholder: "输入您的消息..."
+			},
+			sidebar: {
+				title: "侧边栏",
+				toggle: "切换侧边栏"
+			},
+			languageOptions: {
+				en: "English",
+				'zh-CN': "简体中文"
+			},
+			nav: {
+				models: "模型",
+				localProviders: "本地提供者",
+				providers: "主要提供者",
+				featureOptions: "功能选项",
+				mcp: "MCP",
+				general: "常规",
+				all: "全部设置"
+			},
+			sections: {
+				voidSettings: "Void设置",
+				pageTitle: "Void的设置",
+				models: "模型",
+				localProviders: "本地提供者",
+				localProvidersDesc: "Void可以访问您在本地托管的任何模型。默认情况下，我们会自动检测您的本地模型。",
+				mainProviders: "主要提供者",
+				mainProvidersDesc: "Void可以访问来自Anthropic、OpenAI、OpenRouter等的模型。",
+				featureOptions: "功能选项",
+				general: "常规",
+				mcp: "MCP",
+				mcpDesc: "使用Model Context Protocol为Agent模式提供更多工具。",
+				// Feature Options section texts
+				autocompleteTitle: "Autocomplete",
+				autocompleteExperimental: "实验性功能。",
+				autocompleteOnlyFIM: "仅适用于FIM模型。*",
+				applyTitle: "Apply",
+				applyDesc: "控制Apply按钮行为的设置。",
+				sameAsChatModel: "与聊天模型相同",
+				differentModel: "不同模型",
+				enabled: "已启用",
+				disabled: "已禁用",
+				toolsTitle: "工具",
+				toolsDesc: "工具是LLM可以调用的函数。某些工具需要用户批准。",
+				editorTitle: "编辑器",
+				editorDesc: "控制Void建议在代码编辑器中可见性的设置。",
+				scmTitle: "SCM",
+				scmDesc: "控制提交消息生成器行为的设置。",
+				fixLintErrors: "修复lint错误",
+				autoAcceptLLMChanges: "自动接受LLM更改",
+				importExport: "导入/导出",
+				importExportDesc: "将Void的设置和聊天导入和导出到Void。",
+				importSettings: "导入设置",
+				exportSettings: "导出设置",
+				importChats: "导入聊天",
+				exportChats: "导出聊天",
+				resetSettings: "重置设置",
+				resetChats: "重置聊天",
+				builtInSettings: "内置设置",
+				builtInSettingsDesc: "IDE设置、键盘设置和主题自定义。",
+				generalSettings: "常规设置",
+				keyboardSettings: "键盘设置",
+				themeSettings: "主题设置",
+				openLogs: "打开日志",
+				language: "语言",
+				languageDesc: "选择您首选的Void界面语言。",
+				metrics: "指标",
+				metricsDesc: "非常基础的匿名使用情况跟踪帮助我们保持Void平稳运行。您可以在下面选择退出。无论此设置如何，Void永远不会看到您的代码、消息或API密钥。",
+				optOut: "选择退出（需要重启）",
+				optOutRequiresRestart: "选择退出（需要重启）",
+				aiInstructions: "AI指令",
+				aiInstructionsDesc: "包含在所有AI请求中的系统指令。",
+				disableSystemMessage: "禁用系统消息",
+				disableSystemMessageDesc: "禁用后，Void除您上面指定的内容外不会在系统消息中包含任何内容。",
+				// Section titles
+				modelsTitle: "模型",
+				localProvidersTitle: "本地提供者",
+				mainProvidersTitle: "主要提供者",
+				featureOptionsTitle: "功能选项",
+				generalTitle: "常规",
+				mcpTitle: "MCP",
+				importExportTitle: "导入/导出",
+				builtInSettingsTitle: "内置设置",
+				languageTitle: "语言",
+				metricsTitle: "指标",
+				oneClickSwitchTitle: "一键切换",
+				oneClickSwitchDesc: "将您的编辑器设置转移到Void。",
+				addMCPServer: "添加MCP服务器",
+				// One-Click Switch Button
+				transferFrom: "从 ${fromEditor} 转移",
+				transferring: "转移中",
+				settingsTransferred: "设置已转移",
+				// Model Management
+				pleaseSelectProvider: "请选择提供者。",
+				pleaseEnterModelName: "请输入模型名称。",
+				modelAlreadyExists: "此模型已存在。",
+				added: "已添加",
+				providerName: "提供者名称",
+				modelName: "模型名称",
+				addModel: "添加模型",
+				// Apply Method
+				slowApply: '慢速应用',
+				outputSearchReplaceBlocks: '输出搜索/替换块',
+				rewriteWholeFiles: '重写整个文件',
+				noModelsAvailable: '没有可用的模型',
+				enableModel: '启用模型',
+				providerRequired: '需要提供者',
+				add: '添加',
+				invalidJSON: '无效的JSON',
+
+				// Ollama Setup
+				ollamaSetupInstructions: "Ollama 设置说明",
+				downloadOllama: "1. 下载 [Ollama](https://ollama.com/download)。",
+				openTerminal: "2. 打开您的终端。",
+				runOllamaPull: "3. 运行 `ollama pull your_model` 来安装模型。",
+				voidAutoDetect: "Void 会自动检测本地运行的模型并启用它们。",
+				// Onboarding
+				seeOnboarding: "查看入门屏幕？",
+				yes: "是",
+				no: "否",
+				quickEdit: "快速编辑",
+				sourceControl: "源代码管理",
+				duplicateThread: "重复线程",
+				deleteThread: "删除线程",
+				thinkingDisabled: "思维禁用",
+				normalChat: "普通聊天",
+				noChanges: "没有更改",
+				noChangesYet: "暂无更改",
+				invalidParameters: "无效参数",
+				copyCode: "复制代码",
+				executeShell: "执行Shell",
+				applyCode: "应用代码",
+				stopApply: "停止应用",
+				completedOnboarding: "已完成引导",
+				acceptFile: "接受文件",
+				rejectFile: "拒绝文件",
+				acceptAll: "全部接受",
+				rejectAll: "全部拒绝",
+				// Model List
+				advancedSettings: "高级设置",
+				delete: "删除",
+				detectedLocally: "本地检测",
+				customModel: "自定义模型",
+				showInDropdown: "在下拉菜单中显示",
+				hideFromDropdown: "从下拉菜单中隐藏",
+				addProviderToEnable: "添加 {0} 以启用",
+				noToolsAvailable: "没有可用的工具",
+				commandLabel: "命令：",
+				modelPackagedDesc: "{0} 随 Void 一起提供，因此您不需要更改这些设置。",
+				modelNotRecognized: "Void 无法识别此模型。",
+				modelRecognized: "Void 识别了 {0} (\"{1}\")。",
+				overrideModelDefaults: "覆盖模型默认值",
+				overrideModelDefaultsDesc: "查看 [源代码]({0}) 作为如何设置此 JSON 的参考（高级）。",
+				cancel: "取消",
+				save: "保存"
+			}
+		},
+		'en-US': {
+			settings: {
+				title: "Settings",
+				language: {
+					'title': 'Language',
+					'description': 'Choose your preferred language for the Void interface.',
+					'english': 'English',
+					'chinese': '简体中文',
+					'restartNote': 'Restart required'
+				},
+				restartNote: "Changing language requires restarting the application to take effect.",
+				ok: "OK",
+				cancel: "Cancel"
+			},
+			chat: {
+				title: "Chat",
+				newChat: "New Chat",
+				inputPlaceholder: "Enter your message..."
+			},
+			sidebar: {
+				title: "Sidebar",
+				toggle: "Toggle Sidebar"
+			},
+			languageOptions: {
+				'en-US': "English",
+				'zh-CN': "简体中文"
+			},
+			nav: {
+				models: "Models",
+				localProviders: "Local Providers",
+				providers: "Main Providers",
+				featureOptions: "Feature Options",
+				mcp: "MCP",
+				general: "General",
+				all: "All Settings"
+			},
+			sections: {
+				voidSettings: "Void's Settings",
+				pageTitle: "Void's Settings",
+				models: "Models",
+				localProviders: "Local Providers",
+				mainProviders: "Main Providers",
+				featureOptions: "Feature Options",
+				general: "General",
+				mcp: "MCP",
+				mcpDesc: "Use Model Context Protocol to provide Agent mode with more tools.",
+				// Feature Options section texts
+				autocompleteTitle: "Autocomplete",
+				autocompleteExperimental: "Experimental.",
+				autocompleteOnlyFIM: "Only works with FIM models.*",
+				applyTitle: "Apply",
+				applyDesc: "Settings that control the behavior of the Apply button.",
+				sameAsChatModel: "Same as Chat model",
+				differentModel: "Different model",
+				enabled: "Enabled",
+				disabled: "Disabled",
+				toolsTitle: "Tools",
+				toolsDesc: "Tools are functions that LLMs can call. Some tools require user approval.",
+				editorTitle: "Editor",
+				editorDesc: "Settings that control the visibility of Void suggestions in the code editor.",
+				scmTitle: "SCM",
+				scmDesc: "Settings that control the behavior of the commit message generator.",
+				fixLintErrors: "Fix lint errors",
+				autoAcceptLLMChanges: "Auto-accept LLM changes",
+				showSuggestionsOnSelect: "Show suggestions on select",
+				errorAccessingChatHistory: "Error accessing chat history.",
+				// Section titles
+				modelsTitle: "Models",
+				localProvidersTitle: "Local Providers",
+				localProvidersDesc: "Void can access any model that you host locally. We automatically detect your local models by default.",
+				mainProvidersTitle: "Main Providers",
+				mainProvidersDesc: "Void can access models from Anthropic, OpenAI, OpenRouter, and more.",
+				featureOptionsTitle: "Feature Options",
+				generalTitle: "General",
+				mcpTitle: "MCP",
+				importExportTitle: "Import/Export",
+				importExportDesc: "Transfer Void's settings and chats in and out of Void.",
+				builtInSettingsTitle: "Built-in Settings",
+				builtInSettingsDesc: "IDE settings, keyboard settings, and theme customization.",
+				languageTitle: "Language",
+				languageDesc: "Choose your preferred language for the Void interface.",
+				metricsTitle: "Metrics",
+				metricsDesc: "Very basic anonymous usage tracking helps us keep Void running smoothly. You may opt out below. Regardless of this setting, Void never sees your code, messages, or API keys.",
+				aiInstructionsTitle: "AI Instructions",
+				aiInstructionsDesc: "System instructions to include with all AI requests.",
+				// Button texts
+				importSettings: "Import Settings",
+				exportSettings: "Export Settings",
+				resetSettings: "Reset Settings",
+				importChats: "Import Chats",
+				exportChats: "Export Chats",
+				resetChats: "Reset Chats",
+				generalSettings: "General Settings",
+				keyboardSettings: "Keyboard Settings",
+				themeSettings: "Theme Settings",
+				openLogs: "Open Logs",
+				optOutRequiresRestart: "Opt-out (requires restart)",
+				disableSystemMessage: "Disable system message",
+				disableSystemMessageDesc: "When disabled, Void will not include anything in the system message except for content you specified above.",
+				oneClickSwitchTitle: "One-Click Switch",
+				oneClickSwitchDesc: "Transfer your editor settings into Void.",
+				addMCPServer: "Add MCP Server",
+				// One-Click Switch Button
+				transferFrom: "Transfer from ${fromEditor}",
+				transferring: "Transferring",
+				settingsTransferred: "Settings Transferred",
+				// Model Management
+				pleaseSelectProvider: "Please select a provider.",
+				pleaseEnterModelName: "Please enter a model name.",
+				modelAlreadyExists: "This model already exists.",
+				added: "Added",
+				providerName: "Provider Name",
+				modelName: "Model Name",
+				addModel: "Add a model",
+				// Apply Method
+				slowApply: "Slow Apply",
+				outputSearchReplaceBlocks: 'Output Search/Replace blocks',
+				rewriteWholeFiles: 'Rewrite whole files',
+				noModelsAvailable: 'No models available',
+				enableModel: 'Enable a model',
+				providerRequired: 'Provider required',
+				add: 'Add',
+				invalidJSON: 'Invalid JSON',
+
+				addProviderToEnable: 'Add {0} to enable',
+				// Ollama Setup
+				ollamaSetupInstructions: "Ollama Setup Instructions",
+				downloadOllama: "1. Download [Ollama](https://ollama.com/download).",
+				openTerminal: "2. Open your terminal.",
+				runOllamaPull: "3. Run `ollama pull your_model` to install a model.",
+				voidAutoDetect: "Void automatically detects locally running models and enables them.",
+				yes: "Yes",
+				no: "No",
+				quickEdit: "Quick Edit",
+				sourceControl: "Source Control",
+				duplicateThread: "Duplicate thread",
+				deleteThread: "Delete thread",
+				thinkingDisabled: "Thinking disabled",
+				normalChat: "Normal chat",
+				noChanges: "No changes",
+				noChangesYet: "No changes yet",
+				invalidParameters: "Invalid parameters",
+				copyCode: "Copy Code",
+				executeShell: "Execute Shell",
+				applyCode: "Apply Code",
+				stopApply: "Stop Apply",
+				completedOnboarding: "Completed Onboarding",
+				acceptFile: "Accept File",
+				rejectFile: "Reject File",
+				acceptAll: "Accept All",
+				rejectAll: "Reject All",
+				// Onboarding
+				seeOnboarding: "See onboarding screen?",
+				// Model List
+				advancedSettings: "Advanced Settings",
+				delete: "Delete",
+				detectedLocally: "Detected locally",
+				customModel: "Custom model",
+				showInDropdown: "Show in Dropdown",
+				hideFromDropdown: "Hide from Dropdown",
+				noToolsAvailable: 'No tools available',
+				commandLabel: "Command:",
+				modelPackagedDesc: '{0} comes packaged with Void, so you shouldn\'t need to change these settings.',
+				modelNotRecognized: 'Model not recognized by Void.',
+				modelRecognized: 'Void recognizes {0} ("{1}").',
+				overrideModelDefaults: 'Override model defaults',
+				overrideModelDefaultsDesc: 'See the [sourcecode]({0}) for a reference on how to set this JSON (advanced).',
+				cancel: 'Cancel',
+				save: 'Save'
+			}
+		}
+	};
+
+	private async loadTranslations(language: SupportedLanguage): Promise<void> {
+		if (this.translations.has(language)) return;
+
+		try {
+			// 直接使用内联的翻译数据，无需动态import
+			const translations = this.translationData[language];
+			if (translations) {
+				this.translations.set(language, translations);
+				console.log(`Loaded translations for ${language} successfully`);
+			} else {
+				throw new Error(`No translations found for language: ${language}`);
+			}
+		} catch (error) {
+			console.warn(`Failed to load translations for ${language}:`, error);
+			// Use fallback translations
+			if (!this.translations.has('en-US')) {
+				this.translations.set('en-US', this.fallbackTranslations);
+			}
+		}
+	}
+}
+
+// Export singleton instance
+export const i18nService = new I18nServiceImpl();

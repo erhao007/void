@@ -6,6 +6,7 @@
 import { useMemo, useState } from 'react';
 import { CopyButton, IconShell1 } from '../markdown/ApplyBlockHoverButtons.js';
 import { useAccessor, useChatThreadsState, useChatThreadsStreamState, useFullChatThreadsStreamState, useSettingsState } from '../util/services.js';
+import { useI18n } from '../util/i18nHook.js';
 import { IconX } from './SidebarChat.js';
 import { Check, Copy, Icon, LoaderCircle, MessageCircleQuestion, Trash2, UserCheck, X } from 'lucide-react';
 import { IsRunningType, ThreadType } from '../../../chatThreadService.js';
@@ -14,6 +15,7 @@ import { IsRunningType, ThreadType } from '../../../chatThreadService.js';
 const numInitialThreads = 3
 
 export const PastThreadsList = ({ className = '' }: { className?: string }) => {
+	const { t } = useI18n()
 	const [showAll, setShowAll] = useState(false);
 
 	const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
@@ -30,7 +32,7 @@ export const PastThreadsList = ({ className = '' }: { className?: string }) => {
 	}
 
 	if (!allThreads) {
-		return <div key="error" className="p-1">{`Error accessing chat history.`}</div>;
+		return <div key="error" className="p-1">{t('sections.errorAccessingChatHistory')}</div>;
 	}
 
 	// sorted by most recent to least recent
@@ -116,6 +118,7 @@ const formatTime = (date: Date) => {
 
 
 const DuplicateButton = ({ threadId }: { threadId: string }) => {
+	const { t } = useI18n()
 	const accessor = useAccessor()
 	const chatThreadsService = accessor.get('IChatThreadService')
 	return <IconShell1
@@ -124,14 +127,14 @@ const DuplicateButton = ({ threadId }: { threadId: string }) => {
 		onClick={() => { chatThreadsService.duplicateThread(threadId); }}
 		data-tooltip-id='void-tooltip'
 		data-tooltip-place='top'
-		data-tooltip-content='Duplicate thread'
+		data-tooltip-content={t('sections.duplicateThread')}
 	>
 	</IconShell1>
 
 }
 
 const TrashButton = ({ threadId }: { threadId: string }) => {
-
+	const { t } = useI18n()
 	const accessor = useAccessor()
 	const chatThreadsService = accessor.get('IChatThreadService')
 
@@ -163,7 +166,7 @@ const TrashButton = ({ threadId }: { threadId: string }) => {
 			onClick={() => { setIsTrashPressed(true); }}
 			data-tooltip-id='void-tooltip'
 			data-tooltip-place='top'
-			data-tooltip-content='Delete thread'
+			data-tooltip-content={t('sections.deleteThread')}
 		/>
 	)
 }

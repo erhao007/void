@@ -5,6 +5,7 @@
 
 
 import { useAccessor, useCommandBarState, useIsDark } from '../util/services.js';
+import { useI18n } from '../util/i18nHook.js';
 
 import '../styles.css'
 import { useCallback, useEffect, useState, useRef } from 'react';
@@ -84,6 +85,7 @@ export const RejectAllButtonWrapper = ({ text, onClick, className, ...props }: {
 
 
 export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
+	const { t } = useI18n()
 	const accessor = useAccessor()
 	const editCodeService = accessor.get('IEditCodeService')
 	const editorService = accessor.get('ICodeEditorService')
@@ -149,23 +151,23 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 	const onAcceptFile = () => {
 		if (!uri) return
 		editCodeService.acceptOrRejectAllDiffAreas({ uri, behavior: 'accept', removeCtrlKs: false, _addToHistory: true })
-		metricsService.capture('Accept File', {})
+		metricsService.capture(t('sections.acceptFile'), {})
 	}
 	const onRejectFile = () => {
 		if (!uri) return
 		editCodeService.acceptOrRejectAllDiffAreas({ uri, behavior: 'reject', removeCtrlKs: false, _addToHistory: true })
-		metricsService.capture('Reject File', {})
+		metricsService.capture(t('sections.rejectFile'), {})
 	}
 
 	const onAcceptAll = () => {
 		commandBarService.acceptOrRejectAllFiles({ behavior: 'accept' });
-		metricsService.capture('Accept All', {})
+		metricsService.capture(t('sections.acceptAll'), {})
 		setShowAcceptRejectAllButtons(false);
 	}
 
 	const onRejectAll = () => {
 		commandBarService.acceptOrRejectAllFiles({ behavior: 'reject' });
-		metricsService.capture('Reject All', {})
+		metricsService.capture(t('sections.rejectAll'), {})
 		setShowAcceptRejectAllButtons(false);
 	}
 
@@ -230,7 +232,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 						<div className="flex items-center [&>*]:border-r [&>*]:border-void-border-2 [&>*:last-child]:border-r-0">
 							<AcceptAllButtonWrapper
 								// text={`Accept All${acceptAllKeybindLabel ? ` ${acceptAllKeybindLabel}` : ''}`}
-								text={`Accept All`}
+								text={t('sections.acceptAll')}
 								data-tooltip-id='void-tooltip'
 								data-tooltip-content={acceptAllKeybindLabel}
 								data-tooltip-delay-show={500}
@@ -238,7 +240,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 								/>
 							<RejectAllButtonWrapper
 								// text={`Reject All${rejectAllKeybindLabel ? ` ${rejectAllKeybindLabel}` : ''}`}
-								text={`Reject All`}
+								text={t('sections.rejectAll')}
 								data-tooltip-id='void-tooltip'
 								data-tooltip-content={rejectAllKeybindLabel}
 								data-tooltip-delay-show={500}
@@ -273,8 +275,8 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 						{isADiffInThisFile
 							? `Diff ${(currDiffIdx ?? 0) + 1} of ${sortedDiffIds.length}`
 							: streamState === 'streaming'
-								? 'No changes yet'
-								: 'No changes'
+								? t('sections.noChangesYet')
+								: t('sections.noChanges')
 						}
 
 					</span>
@@ -346,7 +348,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 					<div className='flex self-stretch gap-0 !px-0 !py-0'>
 						<AcceptAllButtonWrapper
 							// text={`Accept File${acceptFileKeybindLabel ? ` ${acceptFileKeybindLabel}` : ''}`}
-							text={`Accept File`}
+							text={t('sections.acceptFile')}
 							data-tooltip-id='void-tooltip'
 							data-tooltip-content={acceptFileKeybindLabel}
 							data-tooltip-delay-show={500}
@@ -354,7 +356,7 @@ export const VoidCommandBar = ({ uri, editor }: VoidCommandBarProps) => {
 						/>
 						<RejectAllButtonWrapper
 							// text={`Reject File${rejectFileKeybindLabel ? ` ${rejectFileKeybindLabel}` : ''}`}
-							text={`Reject File`}
+							text={t('sections.rejectFile')}
 							data-tooltip-id='void-tooltip'
 							data-tooltip-content={rejectFileKeybindLabel}
 							data-tooltip-delay-show={500}

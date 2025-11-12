@@ -1,0 +1,14 @@
+{
+  "filePath": ".spec-workflow/specs/language-settings-persistence/tasks.md",
+  "currentVersion": 1,
+  "snapshots": [
+    {
+      "version": 1,
+      "filename": "snapshot-001.json",
+      "timestamp": "2025-11-12T08:47:04.278Z",
+      "trigger": "initial",
+      "approvalId": "approval_1762937224276_9wi7uor9t",
+      "approvalTitle": "语言设置持久化任务文档审批"
+    }
+  ]
+}

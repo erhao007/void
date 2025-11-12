@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Dynamic Import</title>
+</head>
+<body>
+    <h1>Dynamic Import Test</h1>
+    <div id="results"></div>
+    <button onclick="testImport()">Test Import</button>
+    
+    <script>
+        async function testImport() {
+            const results = document.getElementById('results');
+            results.innerHTML = 'Testing...';
+            
+            try {
+                // Test 1: Basic relative import
+                console.log('Test 1: Basic relative import');
+                results.innerHTML += '<p>Test 1: Basic relative import</p>';
+                
+                // Test 2: URL-based import with file:// scheme
+                console.log('Test 2: File URL import');
+                results.innerHTML += '<p>Test 2: File URL import</p>';
+                
+                const testModuleUrl = new URL('./out/vs/code/electron-sandbox/workbench/workbench.js', 'file:///Users/zhangerhao/Documents/2025works/void/').href;
+                console.log('Attempting to import from:', testModuleUrl);
+                results.innerHTML += `<p>Attempting to import from: ${testModuleUrl}</p>`;
+                
+                try {
+                    const result = await import(testModuleUrl);
+                    console.log('Success:', result);
+                    results.innerHTML += '<p style="color: green;">✓ Import successful!</p>';
+                } catch (error) {
+                    console.error('Import failed:', error);
+                    results.innerHTML += `<p style="color: red;">✗ Import failed: ${error.message}</p>`;
+                }
+                
+                // Test 3: Check file existence
+                console.log('Test 3: Check file existence');
+                results.innerHTML += '<p>Test 3: Check file existence</p>';
+                
+                try {
+                    const response = await fetch(testModuleUrl);
+                    console.log('File exists:', response.ok, 'Status:', response.status);
+                    results.innerHTML += `<p>File exists: ${response.ok} (Status: ${response.status})</p>`;
+                } catch (error) {
+                    console.error('Fetch failed:', error);
+                    results.innerHTML += `<p style="color: red;">✗ Fetch failed: ${error.message}</p>`;
+                }
+                
+            } catch (error) {
+                console.error('Test failed:', error);
+                results.innerHTML += `<p style="color: red;">Test failed: ${error.message}</p>`;
+            }
+        }
+        
+        // Auto-run test on page load
+        window.addEventListener('load', () => {
+            testImport();
+        });
+    </script>
+</body>
+</html>

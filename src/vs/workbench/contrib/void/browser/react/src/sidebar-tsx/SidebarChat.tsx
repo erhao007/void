@@ -7,6 +7,7 @@ import React, { ButtonHTMLAttributes, FormEvent, FormHTMLAttributes, Fragment, K
 
 
 import { useAccessor, useChatThreadsState, useChatThreadsStreamState, useSettingsState, useActiveURI, useCommandBarState, useFullChatThreadsStreamState } from '../util/services.js';
+import { useI18n } from '../util/i18nHook.js';
 import { ScrollType } from '../../../../../../../editor/common/editorCommon.js';
 
 import { ChatMarkdownRender, ChatMessageLocation, getApplyBoxId } from '../markdown/ChatMarkdownRender.js';
@@ -2580,6 +2581,7 @@ const _ChatBubble = ({ threadId, chatMessage, currCheckpointIdx, isCommitted, me
 }
 
 const CommandBarInChat = () => {
+	const { t } = useI18n()
 	const { stateOfURI: commandBarStateOfURI, sortedURIs: sortedCommandBarURIs } = useCommandBarState()
 	const numFilesChanged = sortedCommandBarURIs.length
 
@@ -2674,7 +2676,7 @@ const CommandBarInChat = () => {
 			}}
 			data-tooltip-id='void-tooltip'
 			data-tooltip-place='top'
-			data-tooltip-content='Reject all'
+			data-tooltip-content={t('sections.rejectAll')}
 		/>
 
 		<IconShell1 // AcceptAllButtonWrapper
@@ -2693,7 +2695,7 @@ const CommandBarInChat = () => {
 			}}
 			data-tooltip-id='void-tooltip'
 			data-tooltip-place='top'
-			data-tooltip-content='Accept all'
+			data-tooltip-content={t('sections.acceptAll')}
 		/>
 
 
@@ -2748,7 +2750,7 @@ const CommandBarInChat = () => {
 					onClick={() => { editCodeService.acceptOrRejectAllDiffAreas({ uri, removeCtrlKs: true, behavior: "reject", _addToHistory: true, }); }}
 					data-tooltip-id='void-tooltip'
 					data-tooltip-place='top'
-					data-tooltip-content='Reject file'
+					data-tooltip-content={t('sections.rejectFile')}
 
 				/>
 				<IconShell1 // AcceptAllButtonWrapper
@@ -2756,7 +2758,7 @@ const CommandBarInChat = () => {
 					onClick={() => { editCodeService.acceptOrRejectAllDiffAreas({ uri, removeCtrlKs: true, behavior: "accept", _addToHistory: true, }); }}
 					data-tooltip-id='void-tooltip'
 					data-tooltip-place='top'
-					data-tooltip-content='Accept file'
+					data-tooltip-content={t('sections.acceptFile')}
 				/>
 
 			</div>
@@ -2885,6 +2887,7 @@ export const SidebarChat = () => {
 	const accessor = useAccessor()
 	const commandService = accessor.get('ICommandService')
 	const chatThreadsService = accessor.get('IChatThreadService')
+	const { t } = useI18n()
 
 	const settingsState = useSettingsState()
 	// ----- HIGHER STATE -----

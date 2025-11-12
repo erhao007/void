@@ -1,0 +1,291 @@
+{
+  "scan_metadata": {
+    "timestamp": "2025-11-12T16:33:50.000Z",
+    "scan_type": "adaptive_initialization",
+    "project_name": "void",
+    "description": "VS Code fork with AI capabilities - AI code editor alternative to Cursor",
+    "git_branch": "hot-mole",
+    "working_directory": "/Users/zhangerhao/Documents/2025works/void"
+  },
+  "coverage": {
+    "total_files_estimate": 15000,
+    "scanned_files": 45,
+    "coverage_percentage": 0.3,
+    "scan_intensity": "medium",
+    "truncated": false,
+    "scan_duration_minutes": 15
+  },
+  "modules": [
+    {
+      "name": "void_core",
+      "path": "src/vs/workbench/contrib/void",
+      "type": "typescript",
+      "description": "Void 核心功能模块 - AI 聊天、代码编辑、设置管理",
+      "entry_points": [
+        "src/vs/workbench/contrib/void/browser/voidSettingsPane.ts",
+        "src/vs/workbench/contrib/void/browser/sidebarPane.ts",
+        "src/vs/workbench/contrib/void/common/voidSettingsService.ts"
+      ],
+      "ui_components": [
+        "src/vs/workbench/contrib/void/browser/react/src/sidebar-tsx/",
+        "src/vs/workbench/contrib/void/browser/react/src/void-settings-tsx/",
+        "src/vs/workbench/contrib/void/browser/react/src/markdown/"
+      ],
+      "services": [
+        "chatThreadService",
+        "sendLLMMessageService",
+        "editCodeService",
+        "toolsService",
+        "metricsService"
+      ],
+      "coverage": {
+        "scanned_files": 25,
+        "total_files_estimate": 200,
+        "coverage_percentage": 12.5,
+        "key_areas_covered": true
+      }
+    },
+    {
+      "name": "cli",
+      "path": "cli",
+      "type": "rust",
+      "description": "命令行工具 - 安装、更新、配置管理",
+      "entry_points": [
+        "cli/src/main.rs",
+        "cli/src/lib.rs"
+      ],
+      "services": [
+        "install_command",
+        "update_command",
+        "config_command"
+      ],
+      "coverage": {
+        "scanned_files": 2,
+        "total_files_estimate": 20,
+        "coverage_percentage": 10,
+        "key_areas_covered": true
+      }
+    },
+    {
+      "name": "build_system",
+      "path": "build",
+      "type": "javascript",
+      "description": "构建系统配置 - Gulp, Webpack, 编译工具",
+      "entry_points": [
+        "build/gulpfile.js",
+        "package.json"
+      ],
+      "coverage": {
+        "scanned_files": 15,
+        "total_files_estimate": 50,
+        "coverage_percentage": 30,
+        "key_areas_covered": true
+      }
+    },
+    {
+      "name": "test_suite",
+      "path": "test",
+      "type": "typescript",
+      "description": "测试套件 - 单元测试、集成测试、冒烟测试",
+      "entry_points": [
+        "test/package.json",
+        "test/unit/",
+        "test/integration/",
+        "test/smoke/"
+      ],
+      "coverage": {
+        "scanned_files": 3,
+        "total_files_estimate": 100,
+        "coverage_percentage": 3,
+        "key_areas_covered": false
+      }
+    }
+  ],
+  "technology_stack": {
+    "languages": [
+      {
+        "name": "TypeScript",
+        "percentage": 70,
+        "primary_use": "VS Code extensions, Void core functionality"
+      },
+      {
+        "name": "JavaScript",
+        "percentage": 15,
+        "primary_use": "Build scripts, configuration"
+      },
+      {
+        "name": "Rust",
+        "percentage": 10,
+        "primary_use": "CLI tools, performance-critical components"
+      },
+      {
+        "name": "Python",
+        "percentage": 5,
+        "primary_use": "Utilities, build tools"
+      }
+    ],
+    "frameworks": [
+      "React 19",
+      "Electron",
+      "Gulp",
+      "Webpack",
+      "ESBuild",
+      "Tailwind CSS"
+    ],
+    "ai_integrations": [
+      "OpenAI",
+      "Anthropic",
+      "Ollama",
+      "Google",
+      "Mistral",
+      "Custom LLM providers"
+    ]
+  },
+  "architecture_patterns": {
+    "electron_pattern": {
+      "main_process": "src/vs/workbench/contrib/void/electron-main/",
+      "browser_process": "src/vs/workbench/contrib/void/browser/",
+      "common": "src/vs/workbench/contrib/void/common/",
+      "description": "双进程架构，主进程处理系统级操作，浏览器进程处理UI"
+    },
+    "service_pattern": {
+      "location": "src/vs/workbench/contrib/void/common/",
+      "description": "基于VS Code的依赖注入和单例服务模式"
+    },
+    "react_pattern": {
+      "location": "src/vs/workbench/contrib/void/browser/react/",
+      "description": "函数组件 + Hooks + TypeScript 严格模式"
+    },
+    "channel_pattern": {
+      "location": "src/vs/workbench/contrib/void/electron-main/",
+      "description": "进程间通信使用VS Code Channel机制"
+    }
+  },
+  "key_features": {
+    "ai_chat": {
+      "location": "sidebar-tsx/, chatThreadService.ts",
+      "description": "侧边栏AI聊天界面，支持多线程对话"
+    },
+    "code_apply": {
+      "location": "editCodeService.ts, ApplyBlockHoverButtons.tsx",
+      "description": "快速应用和慢速应用两种代码编辑模式"
+    },
+    "multi_provider": {
+      "location": "sendLLMMessageService.ts, modelCapabilities.ts",
+      "description": "支持多个LLM提供商的统一接口"
+    },
+    "mcp_integration": {
+      "location": "mcpService.ts, mcpChannel.ts",
+      "description": "Model Context Protocol集成"
+    },
+    "settings_management": {
+      "location": "voidSettingsService.ts, void-settings-tsx/",
+      "description": "完善的设置和提供商管理界面"
+    }
+  },
+  "build_and_development": {
+    "package_scripts": {
+      "buildreact": "React组件构建",
+      "watchreact": "React组件监听构建",
+      "compile": "TypeScript编译",
+      "watch": "开发模式监听",
+      "test": "测试运行"
+    },
+    "dependencies": {
+      "ai_sdks": [
+        "@anthropic-ai/sdk",
+        "openai",
+        "google-auth-library"
+      ],
+      "ui_frameworks": [
+        "react",
+        "react-dom",
+        "lucide-react"
+      ],
+      "vscode_platform": [
+        "@vscode/* packages"
+      ]
+    }
+  },
+  "gaps_and_recommendations": {
+    "uncovered_modules": [
+      {
+        "name": "test_suite_detailed",
+        "path": "test/",
+        "reason": "测试文件众多，仅扫描了表层结构",
+        "priority": "medium",
+        "recommended_scan": "test/unit/, test/integration/, test/smoke/"
+      },
+      {
+        "name": "extensions_system",
+        "path": "extensions/",
+        "reason": "扩展系统未深入扫描",
+        "priority": "low",
+        "recommended_scan": "extensions/package.json, extensions/postinstall.mjs"
+      },
+      {
+        "name": "vscode_core",
+        "path": "src/vs/",
+        "reason": "VS Code核心代码过于庞大，仅扫描了Void相关部分",
+        "priority": "low",
+        "recommended_scan": "src/vs/base/, src/vs/platform/"
+      }
+    ],
+    "missing_documentation": [
+      "详细的API文档",
+      "贡献者指南",
+      "部署文档",
+      "故障排除指南"
+    ],
+    "next_scan_priorities": [
+      "深入分析测试策略和覆盖",
+      "扩展系统和插件机制",
+      "性能优化和监控点",
+      "安全机制和最佳实践"
+    ]
+  },
+  "generated_documents": [
+    {
+      "path": "/Users/zhangerhao/Documents/2025works/void/CLAUDE.md",
+      "type": "root",
+      "description": "项目根级架构文档"
+    },
+    {
+      "path": "/Users/zhangerhao/Documents/2025works/void/src/vs/workbench/contrib/void/CLAUDE.md",
+      "type": "module",
+      "description": "Void核心功能模块文档"
+    },
+    {
+      "path": "/Users/zhangerhao/Documents/2025works/void/src/vs/workbench/contrib/void/browser/react/CLAUDE.md",
+      "type": "module",
+      "description": "React UI组件模块文档"
+    },
+    {
+      "path": "/Users/zhangerhao/Documents/2025works/void/src/vs/workbench/contrib/void/common/CLAUDE.md",
+      "type": "module",
+      "description": "通用服务和类型定义文档"
+    },
+    {
+      "path": "/Users/zhangerhao/Documents/2025works/void/src/vs/workbench/contrib/void/electron-main/CLAUDE.md",
+      "type": "module",
+      "description": "主进程服务文档"
+    },
+    {
+      "path": "/Users/zhangerhao/Documents/2025works/void/cli/CLAUDE.md",
+      "type": "module",
+      "description": "CLI工具文档"
+    },
+    {
+      "path": "/Users/zhangerhao/Documents/2025works/void/.claude/index.json",
+      "type": "index",
+      "description": "扫描索引和覆盖率报告"
+    }
+  ],
+  "quality_metrics": {
+    "typescript_strict_mode": true,
+    "eslint_configured": true,
+    "test_coverage_estimated": "moderate",
+    "documentation_coverage": "good_for_core_modules",
+    "code_organization": "excellent_vscode_patterns"
+  }
+}

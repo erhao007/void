@@ -1,0 +1,99 @@
+# Tasks Document
+
+- [x] 1. 扩展 I18nServiceImpl 构造函数以支持依赖注入
+  - File: src/vs/workbench/contrib/void/common/i18n/i18nService.ts
+  - 修改构造函数接受 IVoidSettingsService 参数
+  - 更新服务注册配置以支持依赖注入
+  - Purpose: 为 i18nService 提供对 VoidSettingsService 的访问能力
+  - _Leverage: 现有的依赖注入模式，VS Code 服务注册机制_
+  - _Requirements: 1.1, 1.2_
+  - _Prompt: Role: TypeScript Developer specializing in dependency injection and service architecture | Task: 修改 I18nServiceImpl 构造函数以接受 IVoidSettingsService 参数，并更新相应的服务注册配置以支持依赖注入，遵循现有模式 | Restrictions: 保持向后兼容性，不破坏现有 API，遵循 VS Code 依赖注入约定 | Success: i18nService 能够通过依赖注入获取 VoidSettingsService，服务注册正确配置_
+
+- [x] 2. 实现从设置中恢复语言偏好的逻辑
+  - File: src/vs/workbench/contrib/void/common/i18n/i18nService.ts
+  - 在 initializeTranslations 方法中添加语言恢复逻辑
+  - 实现 _loadLanguageFromSettings 私有方法
+  - 添加错误处理和默认值回退机制
+  - Purpose: 在应用启动时从持久化设置中恢复用户的语言偏好
+  - _Leverage: 现有的 changeLanguage 方法，设置读取模式，错误处理模式_
+  - _Requirements: 1.1, 1.3, 4.1_
+  - _Prompt: Role: Backend Developer with expertise in service initialization and error handling | Task: 在 i18nService 中实现语言恢复逻辑，修改 initializeTranslations 方法以从 VoidSettingsService 读取用户语言偏好，包含完整的错误处理和回退机制 | Restrictions: 必须处理设置不存在、数据损坏等异常情况，确保初始化安全性，不阻塞应用启动 | Success: 应用启动时能正确恢复用户语言偏好，异常情况下能安全回退到默认语言_
+
+- [x] 3. 添加语言设置的验证和类型安全
+  - File: src/vs/workbench/contrib/void/common/i18n/i18nService.ts
+  - 实现语言代码格式验证
+  - 添加类型守卫函数
+  - 确保与 GlobalSettings.language 类型的一致性
+  - Purpose: 防止无效语言代码导致的问题，确保类型安全
+  - _Leverage: 现有的 SupportedLanguage 类型，TypeScript 类型系统_
+  - _Requirements: 4.1, 4.2_
+  - _Prompt: Role: TypeScript Developer specializing in type safety and validation | Task: 实现语言设置的验证机制，包括语言代码格式验证和类型守卫，确保与现有类型系统的一致性和安全性 | Restrictions: 必须使用现有的 SupportedLanguage 类型，验证逻辑要高效，不能影响性能 | Success: 所有语言设置都经过有效验证，类型安全得到保障，无效数据被正确处理_
+
+- [x] 4. 注册 i18nService 到依赖注入容器
+  - File: 找到 VS Code 扩展的服务注册文件
+  - 将 i18nService 注册为单例服务
+  - 配置正确的依赖关系
+  - Purpose: 使 i18nService 能够通过依赖注入系统被其他组件使用
+  - _Leverage: 现有的服务注册模式和配置_
+  - _Requirements: 1.2_
+  - _Prompt: Role: DevOps Engineer with expertise in VS Code extension architecture and dependency injection | Task: 将扩展后的 i18nService 正确注册到 VS Code 的依赖注入容器中，配置为单例并确保 VoidSettingsService 依赖可用 | Restrictions: 必须遵循 VS Code 扩展的服务注册约定，避免循环依赖，确保服务生命周期正确 | Success: i18nService 可以通过依赖注入正确解析，VoidSettingsService 依赖可用，无循环依赖问题_
+
+- [ ] 5. 优化初始化时序和并发安全
+  - File: src/vs/workbench/contrib/void/common/i18n/i18nService.ts
+  - 实现初始化锁机制防止重复初始化
+  - 优化异步初始化流程
+  - 添加初始化状态跟踪
+  - Purpose: 确保多线程环境下的初始化安全性
+  - _Leverage: 现有的异步模式，Promise 处理模式_
+  - _Requirements: 4.3_
+  - _Prompt: Role: Senior Developer with expertise in concurrent programming and async JavaScript | Task: 实现 i18nService 的并发安全初始化机制，包括初始化锁、状态跟踪和异步流程优化，确保在多线程环境下的安全性 | Restrictions: 不能阻塞应用启动，必须处理并发访问，保持向后兼容 | Success: 初始化过程线程安全，无竞态条件，性能影响最小_
+
+- [ ] 6. 编写 i18nService 单元测试
+  - File: 创建对应的测试文件
+  - 测试语言设置恢复功能
+  - 测试错误处理和边界条件
+  - 测试并发初始化安全性
+  - Purpose: 确保 i18nService 扩展功能的正确性和可靠性
+  - _Leverage: 现有的测试框架和工具，模拟对象模式_
+  - _Requirements: 5.1, 5.2_
+  - _Prompt: Role: QA Engineer with expertise in unit testing and mocking frameworks | Task: 为扩展后的 i18nService 创建全面的单元测试，覆盖语言恢复、错误处理、并发安全等所有新功能，使用适当的模拟对象 | Restrictions: 必须测试所有边界条件和错误场景，模拟外部依赖，确保测试隔离和可重复性 | Success: 测试覆盖率达到要求，所有新功能都有对应测试，错误场景得到验证_
+
+- [ ] 7. 编写集成测试验证完整流程
+  - File: 创建集成测试文件
+  - 测试 LanguageSettings 组件与后端的完整交互
+  - 测试应用重启后的语言状态保持
+  - 测试设置保存和恢复的完整流程
+  - Purpose: 验证语言设置持久化功能的端到端正确性
+  - _Leverage: 现有的集成测试环境，VS Code 扩展测试工具_
+  - _Requirements: 3.1, 3.2, 5.3_
+  - _Prompt: Role: Integration Testing Engineer with expertise in VS Code extension testing | Task: 创建全面的集成测试验证语言设置持久化功能，包括组件交互、设置保存恢复、重启状态保持等完整流程 | Restrictions: 必须在真实的 VS Code 扩展环境中测试，模拟真实用户操作，验证完整的用户体验 | Success: 集成测试通过，语言设置持久化功能在真实环境中正常工作，用户体验符合预期_
+
+- [x] 8. 验证现有 LanguageSettings 组件兼容性
+  - File: src/vs/workbench/contrib/void/browser/react/src/void-settings-tsx/Settings.tsx
+  - 确认现有组件无需修改
+  - 验证组件与新后端逻辑的兼容性
+  - 测试 UI 响应和状态同步
+  - Purpose: 确保前端组件与扩展后的后端服务完全兼容
+  - _Leverage: 现有的 LanguageSettings 组件，React 测试工具_
+  - _Requirements: 2.1, 2.2_
+  - _Prompt: Role: Frontend Developer with expertise in React component testing and integration | Task: 验证现有 LanguageSettings 组件与扩展后的 i18nService 的兼容性，确保 UI 响应正确和状态同步正常 | Restrictions: 不能修改现有组件代码，必须保持向后兼容，确保用户体验一致性 | Success: 现有组件无需任何修改即可正常工作，语言切换功能完全正常，状态同步正确_
+
+- [ ] 9. 添加错误日志和调试支持
+  - File: src/vs/workbench/contrib/void/common/i18n/i18nService.ts
+  - 添加关键操作的日志记录
+  - 实现调试模式下的详细输出
+  - 添加性能监控点
+  - Purpose: 提供问题诊断和性能优化的支持
+  - _Leverage: 现有的日志系统，调试模式_
+  - _Requirements: 4.1, 4.2_
+  - _Prompt: Role: DevOps Engineer with expertise in logging and debugging systems | Task: 为 i18nService 的语言持久化功能添加完善的日志记录和调试支持，包括关键操作记录、调试输出和性能监控 | Restrictions: 不能影响性能，必须遵循现有日志格式，调试信息要有用但不泄露敏感数据 | Success: 问题可以快速诊断，性能瓶颈可以识别，调试模式提供有用信息_
+
+- [ ] 10. 编写用户文档和更新说明
+  - File: 创建或更新相关文档
+  - 编写功能使用说明
+  - 更新开发者文档
+  - 添加故障排除指南
+  - Purpose: 为用户和开发者提供清晰的功能说明和使用指导
+  - _Leverage: 现有的文档模板和风格指南_
+  - _Requirements: 非功能性需求_
+  - _Prompt: Role: Technical Writer with expertise in software documentation and user guides | Task: 编写语言设置持久化功能的完整文档，包括用户使用说明、开发者文档和故障排除指南，遵循现有文档风格 | Restrictions: 必须使用现有文档模板和风格，内容要准确易懂，包含必要的截图和示例 | Success: 文档完整准确，用户可以轻松理解和使用功能，开发者有清晰的技术指导_

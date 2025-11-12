@@ -1,0 +1,14 @@
+{
+  "filePath": ".spec-workflow/specs/language-settings-persistence/design.md",
+  "currentVersion": 1,
+  "snapshots": [
+    {
+      "version": 1,
+      "filename": "snapshot-001.json",
+      "timestamp": "2025-11-12T08:46:15.031Z",
+      "trigger": "initial",
+      "approvalId": "approval_1762937175029_urb3pwdfm",
+      "approvalTitle": "语言设置持久化设计文档审批"
+    }
+  ]
+}

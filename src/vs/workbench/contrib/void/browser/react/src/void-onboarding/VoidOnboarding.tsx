@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAccessor, useIsDark, useSettingsState } from '../util/services.js';
+import { useI18n } from '../util/i18nHook.js';
 import { Brain, Check, ChevronRight, DollarSign, ExternalLink, Lock, X } from 'lucide-react';
 import { displayInfoOfProviderName, ProviderName, providerNames, localProviderNames, featureNames, FeatureName, isFeatureNameDisabled } from '../../../../common/voidSettingsTypes.js';
 import { ChatMarkdownRender } from '../markdown/ChatMarkdownRender.js';
@@ -117,19 +118,19 @@ const descriptionOfTab: Record<TabName, string> = {
 	'Cloud/Other': `Add as many as you'd like! Reach out for custom configuration requests.`,
 };
 
-
-const featureNameMap: { display: string, featureName: FeatureName }[] = [
-	{ display: 'Chat', featureName: 'Chat' },
-	{ display: 'Quick Edit', featureName: 'Ctrl+K' },
-	{ display: 'Autocomplete', featureName: 'Autocomplete' },
-	{ display: 'Fast Apply', featureName: 'Apply' },
-	{ display: 'Source Control', featureName: 'SCM' },
-];
-
 const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setPageIndex: (index: number) => void }) => {
 	const [currentTab, setCurrentTab] = useState<TabName>('Free');
 	const settingsState = useSettingsState();
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const { t } = useI18n();
+
+	const featureNameMap: { display: string, featureName: FeatureName }[] = [
+		{ display: 'Chat', featureName: 'Chat' },
+		{ display: t('sections.quickEdit'), featureName: 'Ctrl+K' },
+		{ display: 'Autocomplete', featureName: 'Autocomplete' },
+		{ display: t('sections.fastApply'), featureName: 'Apply' },
+		{ display: t('sections.sourceControl'), featureName: 'SCM' },
+	];
 
 	// Clear error message after 5 seconds
 	useEffect(() => {
@@ -384,6 +385,7 @@ const OllamaDownloadOrRemoveModelButton = ({ modelName, isModelInstalled, sizeGb
 
 
 const YesNoText = ({ val }: { val: boolean | null }) => {
+	const { t } = useI18n();
 
 	return <div
 		className={
@@ -393,7 +395,7 @@ const YesNoText = ({ val }: { val: boolean | null }) => {
 		}
 	>
 		{
-			val === true ? "Yes"
+			val === true ? t('sections.yes')
 				: val === false ? 'No'
 					: "Yes*"
 		}

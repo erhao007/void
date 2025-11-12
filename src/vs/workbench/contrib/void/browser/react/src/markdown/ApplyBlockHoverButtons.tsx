@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
 import { useAccessor, useChatThreadsState, useChatThreadsStreamState, useCommandBarState, useCommandBarURIListener, useSettingsState } from '../util/services.js'
 import { usePromise, useRefState } from '../util/helpers.js'
+import { useI18n } from '../util/i18nHook.js';
 import { isFeatureNameDisabled } from '../../../../common/voidSettingsTypes.js'
 import { URI } from '../../../../../../../base/common/uri.js'
 import { FileSymlink, LucideIcon, RotateCw, Terminal } from 'lucide-react'
@@ -71,6 +72,7 @@ export const IconShell1 = ({ onClick, Icon, disabled, className, ...props }: Ico
 const COPY_FEEDBACK_TIMEOUT = 1500 // amount of time to say 'Copied!'
 
 export const CopyButton = ({ codeStr, toolTipName }: { codeStr: string | (() => Promise<string> | string), toolTipName: string }) => {
+	const { t } = useI18n()
 	const accessor = useAccessor()
 
 	const metricsService = accessor.get('IMetricsService')
@@ -88,7 +90,7 @@ export const CopyButton = ({ codeStr, toolTipName }: { codeStr: string | (() => 
 		clipboardService.writeText(typeof codeStr === 'string' ? codeStr : await codeStr())
 			.then(() => { setCopyButtonText(CopyButtonText.Copied) })
 			.catch(() => { setCopyButtonText(CopyButtonText.Error) })
-		metricsService.capture('Copy Code', { length: codeStr.length }) // capture the length only
+		metricsService.capture(t('sections.copyCode'), { length: codeStr.length }) // capture the length only
 	}, [metricsService, clipboardService, codeStr, setCopyButtonText])
 
 	return <IconShell1
@@ -265,6 +267,7 @@ const ApplyButtonsForTerminal = ({
 	language?: string,
 	uri: URI | 'current';
 }) => {
+	const { t } = useI18n()
 	const accessor = useAccessor()
 	const metricsService = accessor.get('IMetricsService')
 	const terminalToolService = accessor.get('ITerminalToolService')
@@ -285,7 +288,7 @@ const ApplyButtonsForTerminal = ({
 				{ type: 'persistent', persistentTerminalId: terminalId }
 			);
 			interruptToolRef.current = interrupt
-			metricsService.capture('Execute Shell', { length: codeStr.length })
+			metricsService.capture(t('sections.executeShell'), { length: codeStr.length })
 		} catch (e) {
 			setIsShellRunning(false)
 			console.error('Failed to execute in terminal:', e)
@@ -327,6 +330,7 @@ const ApplyButtonsForEdit = ({
 	language?: string,
 	uri: URI | 'current';
 }) => {
+	const { t } = useI18n()
 	const accessor = useAccessor()
 	const editCodeService = accessor.get('IEditCodeService')
 	const metricsService = accessor.get('IMetricsService')
@@ -361,7 +365,7 @@ const ApplyButtonsForEdit = ({
 			notificationService.info(`Void Error: There was a problem running Apply: ${e}.`)
 
 		})
-		metricsService.capture('Apply Code', { length: codeStr.length }) // capture the length only
+		metricsService.capture(t('sections.applyCode'), { length: codeStr.length }) // capture the length only
 
 	}, [setApplying, currStreamStateRef, editCodeService, codeStr, uri, applyBoxId, metricsService, notificationService])
 
@@ -372,7 +376,7 @@ const ApplyButtonsForEdit = ({
 		if (!uri) return
 
 		editCodeService.interruptURIStreaming({ uri })
-		metricsService.capture('Stop Apply', {})
+		metricsService.capture(t('sections.stopApply'), { length: codeStr.length })
 	}, [currStreamStateRef, applyBoxId, editCodeService, metricsService])
 
 	const onAccept = useCallback(() => {

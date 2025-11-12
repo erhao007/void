@@ -114,7 +114,8 @@ function withBrowserDefaults(/**@type WebpackConfig & { context: string }*/extCo
 			fallback: {
 				'path': require.resolve('path-browserify'),
 				'os': require.resolve('os-browserify'),
-				'util': require.resolve('util')
+				'util': require.resolve('util'),
+				'domain': false
 			},
 			extensionAlias: {
 				// this is needed to resolve dynamic imports that now require the .js extension

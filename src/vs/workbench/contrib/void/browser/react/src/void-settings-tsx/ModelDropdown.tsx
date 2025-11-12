@@ -52,6 +52,9 @@ const MemoizedModelDropdown = ({ featureName, className }: { featureName: Featur
 	const oldOptionsRef = useRef<ModelOption[]>([])
 	const [memoizedOptions, setMemoizedOptions] = useState(oldOptionsRef.current)
 
+	const accessor = useAccessor()
+	const i18nService = accessor.get('II18nService')
+
 	const { filter, emptyMessage } = modelFilterOfFeatureName[featureName]
 
 	useEffect(() => {
@@ -65,7 +68,7 @@ const MemoizedModelDropdown = ({ featureName, className }: { featureName: Featur
 	}, [settingsState._modelOptions, filter])
 
 	if (memoizedOptions.length === 0) { // Pretty sure this will never be reached unless filter is enabled
-		return <WarningBox text={emptyMessage?.message || 'No models available'} />
+		return <WarningBox text={emptyMessage?.message || i18nService.t('sections.noModelsAvailable')} />
 	}
 
 	return <ModelSelectBox featureName={featureName} options={memoizedOptions} className={className} />
@@ -77,6 +80,7 @@ export const ModelDropdown = ({ featureName, className }: { featureName: Feature
 
 	const accessor = useAccessor()
 	const commandService = accessor.get('ICommandService')
+	const i18nService = accessor.get('II18nService')
 
 	const openSettings = () => { commandService.executeCommand(VOID_OPEN_SETTINGS_ACTION_ID); };
 
@@ -87,10 +91,10 @@ export const ModelDropdown = ({ featureName, className }: { featureName: Feature
 	if (isDisabled)
 		return <WarningBox onClick={openSettings} text={
 			emptyMessage && emptyMessage.priority === 'always' ? emptyMessage.message :
-				isDisabled === 'needToEnableModel' ? 'Enable a model'
-					: isDisabled === 'addModel' ? 'Add a model'
-						: (isDisabled === 'addProvider' || isDisabled === 'notFilledIn' || isDisabled === 'providerNotAutoDetected') ? 'Provider required'
-							: 'Provider required'
+				isDisabled === 'needToEnableModel' ? i18nService.t('sections.enableModel')
+					: isDisabled === 'addModel' ? i18nService.t('sections.addModel')
+						: (isDisabled === 'addProvider' || isDisabled === 'notFilledIn' || isDisabled === 'providerNotAutoDetected') ? i18nService.t('sections.providerRequired')
+							: i18nService.t('sections.providerRequired')
 		} />
 
 	return <ErrorBoundary>

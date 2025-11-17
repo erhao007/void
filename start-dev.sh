@@ -12,8 +12,9 @@ export ELECTRON_ENABLE_LOGGING=1
 
 # 添加额外的环境变量来解决原生模块问题
 export NODE_OPTIONS="--max-old-space-size=4096"
-export VSCODE_DISABLE_NATIVE_MODULES=1
-export DISABLE_NATIVE_MODULES=1
+# 移除禁用原生模块的设置，允许原生模块正常加载
+# export VSCODE_DISABLE_NATIVE_MODULES=1
+# export DISABLE_NATIVE_MODULES=1
 
 # 检查是否已编译
 if [ ! -d "out" ]; then

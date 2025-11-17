@@ -15,7 +15,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { MCPConfigFileJSON, MCPConfigFileEntryJSON, MCPServer, RawMCPToolCall, MCPToolErrorResponse, MCPServerEventResponse, MCPToolCallParams, removeMCPToolNamePrefix } from '../common/mcpServiceTypes.js';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolResult, Tool } from '@modelcontextprotocol/sdk/types.js';
 import { MCPUserStateOfName } from '../common/voidSettingsTypes.js';
 
 const getClientConfig = (serverName: string) => {
@@ -174,8 +174,9 @@ export class MCPChannel implements IServerChannel {
 				transport = new StreamableHTTPClientTransport(server.url);
 				await client.connect(transport);
 				console.log(`Connected via HTTP to ${serverName}`);
-				const { tools } = await client.listTools()
-				const toolsWithUniqueName = tools.map(({ name, ...rest }) => ({ name: this._addUniquePrefix(name), ...rest }))
+				const listToolsResult = await client.listTools();
+				const { tools }: { tools: Tool[] } = listToolsResult;
+				const toolsWithUniqueName = tools.map(({ name, ...rest }: Tool) => ({ name: this._addUniquePrefix(name), ...rest }))
 				info = {
 					status: isOn ? 'success' : 'offline',
 					tools: toolsWithUniqueName,
@@ -185,8 +186,9 @@ export class MCPChannel implements IServerChannel {
 				console.warn(`HTTP failed for ${serverName}, trying SSE…`, httpErr);
 				transport = new SSEClientTransport(server.url);
 				await client.connect(transport);
-				const { tools } = await client.listTools()
-				const toolsWithUniqueName = tools.map(({ name, ...rest }) => ({ name: this._addUniquePrefix(name), ...rest }))
+				const listToolsResult = await client.listTools();
+				const { tools }: { tools: Tool[] } = listToolsResult;
+				const toolsWithUniqueName = tools.map(({ name, ...rest }: Tool) => ({ name: this._addUniquePrefix(name), ...rest }))
 				console.log(`Connected via SSE to ${serverName}`);
 				info = {
 					status: isOn ? 'success' : 'offline',
@@ -208,8 +210,9 @@ export class MCPChannel implements IServerChannel {
 			await client.connect(transport)
 
 			// Get the tools from the server
-			const { tools } = await client.listTools()
-			const toolsWithUniqueName = tools.map(({ name, ...rest }) => ({ name: this._addUniquePrefix(name), ...rest }))
+			const listToolsResult = await client.listTools();
+			const { tools }: { tools: Tool[] } = listToolsResult;
+			const toolsWithUniqueName = tools.map(({ name, ...rest }: Tool) => ({ name: this._addUniquePrefix(name), ...rest }))
 
 			// Create a full command string for display
 			const fullCommand = `${server.command} ${server.args?.join(' ') || ''}`

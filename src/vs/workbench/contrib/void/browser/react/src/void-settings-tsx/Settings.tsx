@@ -1592,8 +1592,8 @@ export const LanguageSettings = () => {
 	}, [voidSettingsService, setLanguage]);
 
 	const languageOptions = [
-		{ value: 'en-US' as const, label: t('language.english') },
-		{ value: 'zh-CN' as const, label: t('language.chinese') }
+		{ value: 'en-US' as const, label: t('settings.language.english') },
+		{ value: 'zh-CN' as const, label: t('settings.language.chinese') }
 	];
 
 	return (
@@ -1611,7 +1611,7 @@ export const LanguageSettings = () => {
 				/>
 			</div>
 			<div className='text-void-fg-3 text-xs mt-2'>
-				{t('language.restartNote')}
+				{t('settings.language.restartNote')}
 			</div>
 		</div>
 	);

@@ -28,11 +28,10 @@ async function getClient(instrumentationKey: string, addInternalFlag?: boolean, 
 	// eslint-disable-next-line local/code-amd-node-module
 	const postPlugin = isWeb ? await importAMDNodeModule<typeof import('@microsoft/1ds-post-js')>('@microsoft/1ds-post-js', 'bundle/ms.post.min.js') : await import('@microsoft/1ds-post-js');
 
-	const appInsightsCore = new oneDs.AppInsightsCore();
+	const appInsightsCore = new oneDs.AppInsightsCore() as any as IAppInsightsCore;
 	const collectorChannelPlugin: PostChannel = new postPlugin.PostChannel();
 	// Configure the app insights core to send to collector++ and disable logging of debug info
 	const coreConfig: IExtendedConfiguration = {
-		instrumentationKey,
 		endpointUrl,
 		loggingLevelTelemetry: 0,
 		loggingLevelConsole: 0,
@@ -42,22 +41,26 @@ async function getClient(instrumentationKey: string, addInternalFlag?: boolean, 
 		channels: [[
 			collectorChannelPlugin
 		]]
-	};
+	} as any; // Cast to any to allow instrumentationKey property
+
+	// Add instrumentationKey property which is not in the type definition but is required
+	(coreConfig as any).instrumentationKey = instrumentationKey;
 
 	if (xhrOverride) {
-		coreConfig.extensionConfig = {};
+		(coreConfig as any).extensionConfig = {};
 		// Configure the channel to use a XHR Request override since it's not available in node
 		const channelConfig: IChannelConfiguration = {
 			alwaysUseXhrOverride: true,
 			ignoreMc1Ms0CookieProcessing: true,
 			httpXHROverride: xhrOverride
 		};
-		coreConfig.extensionConfig[collectorChannelPlugin.identifier] = channelConfig;
+		(coreConfig as any).extensionConfig[collectorChannelPlugin.identifier] = channelConfig;
 	}
 
-	appInsightsCore.initialize(coreConfig, []);
+	(appInsightsCore as any).initialize(coreConfig, []);
 
-	appInsightsCore.addTelemetryInitializer((envelope: any) => {
+	// Use type assertion to access addTelemetryInitializer method
+	(appInsightsCore as any).addTelemetryInitializer((envelope: any) => {
 		// Opt the user out of 1DS data sharing
 		envelope['ext'] = envelope['ext'] ?? {};
 		envelope['ext']['web'] = envelope['ext']['web'] ?? {};

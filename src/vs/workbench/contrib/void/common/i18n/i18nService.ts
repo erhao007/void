@@ -3,6 +3,9 @@
  *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
  *--------------------------------------------------------------------------------------*/
 
+import { createDecorator } from '../../../../../platform/instantiation/common/instantiation.js';
+import { registerSingleton, InstantiationType } from '../../../../../platform/instantiation/common/extensions.js';
+
 export type SupportedLanguage = 'en-US' | 'zh-CN';
 
 export interface I18nService {
@@ -12,6 +15,9 @@ export interface I18nService {
 	t(languageKey: string, defaultValue?: string, variables?: Record<string, any>): string;
 	changeLanguage(language: SupportedLanguage): Promise<void>;
 }
+
+// Service identifier for dependency injection
+export const II18nService = createDecorator<I18nService>('voidI18nService');
 
 export interface TranslationResource {
 	[key: string]: string | TranslationResource;
@@ -125,7 +131,11 @@ class I18nServiceImpl implements I18nService {
 				},
 				restartNote: "更改语言后需要重新启动应用程序才能生效。",
 				ok: "确定",
-				cancel: "取消"
+				cancel: "取消",
+				languageOptions: {
+					'en-US': "English",
+					'zh-CN': "简体中文"
+				}
 			},
 			chat: {
 				title: "聊天",
@@ -137,9 +147,15 @@ class I18nServiceImpl implements I18nService {
 				toggle: "切换侧边栏"
 			},
 			languageOptions: {
-				en: "English",
+				'en-US': "English",
 				'zh-CN': "简体中文"
 			},
+			// settings: {
+			// 	languageOptions: {
+			// 		'en-US': "English",
+			// 		'zh-CN': "简体中文"
+			// 	}
+			// },
 			nav: {
 				models: "模型",
 				localProviders: "本地提供者",
@@ -293,12 +309,16 @@ class I18nServiceImpl implements I18nService {
 					'title': 'Language',
 					'description': 'Choose your preferred language for the Void interface.',
 					'english': 'English',
-					'chinese': '简体中文',
+					'chinese': 'Chinese',
 					'restartNote': 'Restart required'
 				},
 				restartNote: "Changing language requires restarting the application to take effect.",
 				ok: "OK",
-				cancel: "Cancel"
+				cancel: "Cancel",
+				languageOptions: {
+					'en-US': "English",
+					'zh-CN': "简体中文"
+				}
 			},
 			chat: {
 				title: "Chat",
@@ -313,6 +333,12 @@ class I18nServiceImpl implements I18nService {
 				'en-US': "English",
 				'zh-CN': "简体中文"
 			},
+			// settings: {
+			// 	languageOptions: {
+			// 		'en-US': "English",
+			// 		'zh-CN': "简体中文"
+			// 	}
+			// },
 			nav: {
 				models: "Models",
 				localProviders: "Local Providers",
@@ -483,3 +509,6 @@ class I18nServiceImpl implements I18nService {
 
 // Export singleton instance
 export const i18nService = new I18nServiceImpl();
+
+// Register service
+registerSingleton(II18nService, I18nServiceImpl, InstantiationType.Eager);

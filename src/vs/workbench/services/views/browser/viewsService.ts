@@ -670,7 +670,10 @@ export class ViewsService extends Disposable implements IViewsService {
 	}
 
 	private createViewPaneContainer(element: HTMLElement, viewContainer: ViewContainer, viewContainerLocation: ViewContainerLocation, disposables: DisposableStore, instantiationService: IInstantiationService): ViewPaneContainer {
-		const viewPaneContainer: ViewPaneContainer = (instantiationService as any).createInstance(viewContainer.ctorDescriptor.ctor, ...(viewContainer.ctorDescriptor.staticArguments || []));
+		// Ensure we always pass the container id as the first argument
+		const staticArgs = viewContainer.ctorDescriptor.staticArguments || [];
+		const args = staticArgs.length > 0 ? staticArgs : [viewContainer.id];
+		const viewPaneContainer: ViewPaneContainer = (instantiationService as any).createInstance(viewContainer.ctorDescriptor.ctor, ...args);
 
 		this.viewPaneContainers.set(viewPaneContainer.getId(), viewPaneContainer);
 		disposables.add(toDisposable(() => this.viewPaneContainers.delete(viewPaneContainer.getId())));

@@ -416,7 +416,7 @@ export class Menubar extends Disposable {
 		const hideOthers = new MenuItem({ label: nls.localize('mHideOthers', "Hide Others"), role: 'hideOthers', accelerator: 'Command+Alt+H' });
 		const showAll = new MenuItem({ label: nls.localize('mShowAll', "Show All"), role: 'unhide' });
 		const quit = new MenuItem(this.likeAction('workbench.action.quit', {
-			label: nls.localize('miQuit', "Quit {0}", this.productService.nameLong), click: async (item, window, event) => {
+			label: nls.localize('miQuit', "Quit {0}", this.productService.nameLong), click: async (item :any, window :any, event :any) => {
 				const lastActiveWindow = this.windowsMainService.getLastActiveWindow();
 				if (
 					this.windowsMainService.getWindowCount() === 0 || 	// allow to quit when no more windows are open
@@ -856,7 +856,7 @@ export class Menubar extends Disposable {
 		}
 
 		const originalClick = options.click;
-		options.click = (item, window, event) => {
+		options.click = (item :any, window:any, event :any) => {
 			this.reportMenuActionTelemetry(commandId);
 			originalClick?.(item, window, event);
 		};

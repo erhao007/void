@@ -23,7 +23,8 @@ import { MCPServer } from '../../../../common/mcpServiceTypes.js';
 import { useMCPServiceState } from '../util/services.js';
 import { OPT_OUT_KEY } from '../../../../common/storageKeys.js';
 import { StorageScope, StorageTarget } from '../../../../../../../platform/storage/common/storage.js';
-import { useI18n, useLanguageSettings } from '../util/i18nHook.js';
+import { useI18n } from '../util/i18nHook.js';
+import { useLanguageSettings } from '../hooks/useLanguageSettings.tsx';
 // import { voidSettingsService } from '../../../common/voidSettingsService.js';
 
 type Tab =
@@ -1582,36 +1583,118 @@ export const Settings = () => {
 // Language Settings Component
 export const LanguageSettings = () => {
 	const { t } = useI18n();
-	const { currentLanguage, setLanguage } = useLanguageSettings();
-	const accessor = useAccessor();
-	const voidSettingsService = accessor.get('IVoidSettingsService');
+	const {
+		currentLanguage,
+		storedLanguage,
+		isInSync,
+		isLoading,
+		error,
+		lastOperationSuccess,
+		changeLanguage,
+		syncFromBackend,
+		clearError,
+		resetOperationState,
+		languageOptions
+	} = useLanguageSettings();
 
-	const handleLanguageChange = useCallback((newLanguage: 'zh-CN' | 'en-US') => {
-		voidSettingsService.setGlobalSetting('language', newLanguage);
-		setLanguage(newLanguage);
-	}, [voidSettingsService, setLanguage]);
+	const handleLanguageChange = useCallback(async (option: any) => {
+		if (!option || option.value === currentLanguage) return;
+		await changeLanguage(option.value);
+	}, [changeLanguage, currentLanguage]);
 
-	const languageOptions = [
-		{ value: 'en-US' as const, label: t('settings.language.english') },
-		{ value: 'zh-CN' as const, label: t('settings.language.chinese') }
-	];
+	const selectedOption = useMemo(() =>
+		languageOptions.find(option => option.value === currentLanguage),
+		[languageOptions, currentLanguage]
+	);
 
 	return (
 		<div className='flex flex-col gap-4'>
-			<div className='max-w-48 w-full'>
-				<VoidCustomDropdownBox
-					className='text-xs text-void-fg-3 bg-void-bg-1 border border-void-border-1 rounded p-0.5 px-1'
-					options={languageOptions}
-					selectedOption={languageOptions.find(option => option.value === currentLanguage)}
-					onChangeOption={(option) => option && handleLanguageChange(option.value)}
-					getOptionDisplayName={(option) => option.label}
-					getOptionDropdownName={(option) => option.label}
-					getOptionDropdownDetail={() => ''}
-					getOptionsEqual={(a, b) => a?.value === b?.value}
-				/>
+			{/* Language dropdown with loading state */}
+			<div className='max-w-48 w-full relative'>
+				<ErrorBoundary>
+					<VoidCustomDropdownBox
+						className={`text-xs text-void-fg-3 bg-void-bg-1 border border-void-border-1 rounded p-0.5 px-1 transition-all duration-200 ${
+							isLoading ? 'opacity-60 cursor-wait' : ''
+						} ${
+							!isInSync ? 'border-yellow-500 bg-yellow-500/5' : ''
+						}`}
+						options={languageOptions}
+						selectedOption={selectedOption}
+						onChangeOption={handleLanguageChange}
+						getOptionDisplayName={(option) => option.label}
+						getOptionDropdownName={(option) => option.label}
+						getOptionDropdownDetail={(option) => option.label}
+						getOptionsEqual={(a, b) => a?.value === b?.value}
+						disabled={isLoading}
+					/>
+				</ErrorBoundary>
+
+				{/* Loading indicator */}
+				{isLoading && (
+					<div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
+						<Loader2 className="size-3 animate-spin text-void-fg-3" />
+					</div>
+				)}
+
+				{/* Sync status indicator */}
+				{!isInSync && !isLoading && (
+					<div
+						className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none"
+						data-tooltip-id='void-tooltip'
+						data-tooltip-content={t('settings.language.syncNeeded', 'Language sync needed')}
+					>
+						<RefreshCw className="size-3 text-yellow-500" />
+					</div>
+				)}
+
+				{/* Success indicator */}
+				{lastOperationSuccess === true && (
+					<div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
+						<Check className="size-3 text-green-500" />
+					</div>
+				)}
+
+				{/* Error indicator */}
+				{lastOperationSuccess === false && (
+					<div
+						className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none"
+						data-tooltip-id='void-tooltip'
+						data-tooltip-content={error || 'Error'}
+					>
+						<X className="size-3 text-red-500" />
+					</div>
+				)}
 			</div>
-			<div className='text-void-fg-3 text-xs mt-2'>
-				{t('settings.language.restartNote')}
+
+			{/* Status message */}
+			<div className='flex flex-col gap-1'>
+				<div className='text-void-fg-3 text-xs'>
+					{t('settings.language.restartNote')}
+				</div>
+
+				{/* Sync status message */}
+				{!isInSync && !isLoading && (
+					<div className='text-yellow-600 dark:text-yellow-400 text-xs flex items-center gap-1'>
+						<RefreshCw className="size-3" />
+						{t('settings.language.syncNeeded', 'Language setting is being synchronized...')}
+					</div>
+				)}
+
+				{/* Success message */}
+				{lastOperationSuccess === true && (
+					<div className='text-green-600 dark:text-green-400 text-xs flex items-center gap-1'>
+						<Check className="size-3" />
+						{t('settings.language.changeSuccess', 'Language changed successfully')}
+					</div>
+				)}
+
+				{/* Error message */}
+				{error && (
+					<div className='text-red-600 dark:text-red-400 text-xs flex items-center gap-1'>
+						<X className="size-3" />
+						{error}
+					</div>
+				)}
 			</div>
 		</div>
 	);

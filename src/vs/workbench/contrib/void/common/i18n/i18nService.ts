@@ -14,6 +14,7 @@ export interface I18nService {
 
 	t(languageKey: string, defaultValue?: string, variables?: Record<string, any>): string;
 	changeLanguage(language: SupportedLanguage): Promise<void>;
+	getCurrentLanguage(): SupportedLanguage;
 }
 
 // Service identifier for dependency injection
@@ -49,6 +50,7 @@ class I18nServiceImpl implements I18nService {
 	private _onDidChangeLanguage = new Emitter<SupportedLanguage>();
 	private translations: Map<SupportedLanguage, TranslationResource> = new Map();
 	private fallbackTranslations: TranslationResource = {};
+	private _isInitialized = false;
 
 	constructor() {
 		this.onDidChangeLanguage = this._onDidChangeLanguage.on.bind(this._onDidChangeLanguage);
@@ -103,18 +105,43 @@ class I18nServiceImpl implements I18nService {
 	async changeLanguage(language: SupportedLanguage): Promise<void> {
 		if (this._currentLanguage === language) return;
 
-		this._currentLanguage = language;
-		await this.loadTranslations(language);
-		this._onDidChangeLanguage.fire(language);
+		try {
+			this._currentLanguage = language;
+			await this.loadTranslations(language);
+			this._onDidChangeLanguage.fire(language);
+
+			console.log(`Language changed from ${this._currentLanguage} to ${language}`);
+		} catch (error) {
+			console.error(`Failed to change language to ${language}:`, error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Get the current language
+	 */
+	getCurrentLanguage(): SupportedLanguage {
+		return this._currentLanguage;
+	}
+
+	/**
+	 * Set current language (for initialization purposes)
+	 * This method should only be called during initialization
+	 */
+	_setCurrentLanguage(language: SupportedLanguage): void {
+		if (!this._isInitialized) {
+			this._currentLanguage = language;
+		}
 	}
 
 	private async initializeTranslations(): Promise<void> {
+		if (this._isInitialized) return;
+
 		// Load default language (English)
 		await this.loadTranslations('en-US');
 		this.fallbackTranslations = this.translations.get('en-US') || {};
 
-		// Try to load user's preferred language from settings later
-		// For now, default to English
+		this._isInitialized = true;
 	}
 
 	// 内联翻译数据，避免动态import JSON文件的MIME类型问题

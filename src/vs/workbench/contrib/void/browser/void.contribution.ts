@@ -66,6 +66,9 @@ import './voidSCMService.js'
 
 // ---------- common (unclear if these actually need to be imported, because they're already imported wherever they're used) ----------
 
+// i18nService (must be imported before voidSettingsService for dependency injection)
+import '../common/i18n/i18nService.js'
+
 // llmMessage
 import '../common/sendLLMMessageService.js'
 

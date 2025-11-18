@@ -1,242 +1,460 @@
-# Design Document
+# Language Settings Persistence Fix - Design
 
 ## Overview
 
-本设计文档详细说明语言设置持久化功能的实现方案。该功能将修复当前用户在设置页面中选择语言后，关闭再次打开会复位成默认语言的问题。通过扩展现有的 i18nService 与 Void 设置系统的集成，实现用户语言偏好的持久化保存和自动恢复。
+本文档描述了修复Void语言设置持久化问题的技术设计方案。该方案基于现有的VoidSettingsService架构，通过改进language参数的保存和读取逻辑来确保用户语言设置在应用重启后正确保持。
 
-## Steering Document Alignment
+## Architecture Analysis
 
-### Technical Standards (tech.md)
-
-本设计严格遵循 Void 项目的技术标准：
-
-- **TypeScript 严格模式**：所有新代码将使用严格的 TypeScript 类型定义
-- **依赖注入模式**：使用 VS Code 的依赖注入系统，确保服务间的松耦合
-- **单一职责原则**：每个服务和方法都有明确的单一职责
-- **错误处理模式**：遵循现有的错误处理和日志记录模式
-- **异步操作模式**：使用 Promise 和 async/await 处理异步操作
-
-### Project Structure (structure.md)
-
-实现将遵循现有的项目结构：
-
-- **服务层**：在 `common/` 目录中扩展现有的 i18nService
-- **类型定义**：在相应的类型文件中定义必要的接口
-- **UI 层**：保持现有的 LanguageSettings 组件结构不变
-- **模块化设计**：确保功能可以被独立测试和维护
-
-## Code Reuse Analysis
-
-基于对现有代码的深入分析，本功能将大量重用现有组件和服务：
-
-### Existing Components to Leverage
-
-- **VoidSettingsService**:
-  - 已完善的加密存储机制（`_storeState()` 和 `_readState()`）
-  - `setGlobalSetting()` 方法用于保存语言设置
-  - `state.globalSettings.language` 字段已存在于 GlobalSettings 类型中
-
-- **I18nServiceImpl**:
-  - 现有的 `changeLanguage()` 方法和事件机制
-  - 翻译加载和管理逻辑
-  - 事件通知系统（`onDidChangeLanguage`）
-
-- **LanguageSettings 组件**:
-  - UI 逻辑已经正确实现，保存和读取逻辑完善
-  - 与 VoidSettingsService 的集成已经正常工作
-
-### Integration Points
-
-- **VS Code 存储系统**:
-  - 使用现有的 `IStorageService` 接口
-  - 利用现有的加密存储机制
-  - 遵循现有的存储键命名约定
-
-- **Void 设置系统**:
-  - 集成到现有的全局设置管理流程
-  - 利用现有的设置变更通知机制
-  - 保持与其他设置的一致性
-
-## Architecture
-
-### 设计原则
-
-本实现采用**最小侵入性修改**的原则，通过扩展现有服务而非重写来解决问题：
-
-1. **保持向后兼容**：不破坏现有的 API 和组件接口
-2. **最小修改范围**：仅修改 i18nService 的初始化逻辑
-3. **复用现有机制**：充分利用现有的存储和通知系统
-4. **遵循现有模式**：使用与其他设置相同的持久化模式
-
-### 核心架构
+### Current System Architecture
 
 ```mermaid
 graph TD
-    A[LanguageSettings 组件] --> B[VoidSettingsService]
-    B --> C[加密存储]
-    C --> D[VS Code Storage Service]
+    A[LanguageSettings UI Component] --> B[VoidSettingsService]
+    B --> C[I18nService]
+    B --> D[Encrypted Storage]
+    D --> E[Application Scope Storage]
 
-    E[i18nService 初始化] --> F[VoidSettingsService]
+    F[App Startup] --> B
     F --> C
-    C --> E
-
-    G[i18nService.changeLanguage] --> H[VoidSettingsService.setGlobalSetting]
-    H --> C
-
-    I[应用启动] --> J[i18nService.constructor]
-    J --> K[initializeTranslations]
-    K --> L[从设置读取语言]
-    L --> M[应用用户语言偏好]
+    B --> G[GlobalSettings]
+    G --> H[language: 'zh-CN' | 'en-US']
 ```
 
-### 数据流程
+### Problem Areas Identified
 
-1. **设置保存流程**：
-   ```
-   LanguageSettings 组件 → voidSettingsService.setGlobalSetting('language', newLanguage)
-   → _storeState() → 加密存储 → VS Code Storage
-   ```
+1. **Storage Timing**: language参数可能在I18nService初始化之后才被读取
+2. **State Synchronization**: UI状态与实际保存的设置不同步
+3. **Initialization Order**: 服务初始化顺序导致设置丢失
 
-2. **语言恢复流程**：
-   ```
-   应用启动 → i18nService 初始化 → initializeTranslations()
-   → voidSettingsService.state.globalSettings.language → changeLanguage()
-   → 触发语言变更事件 → UI 更新
-   ```
+## Solution Design
 
-## Components and Interfaces
+### 1. Enhanced Service Integration
 
-### Component 1: 扩展的 I18nServiceImpl
+#### 1.1 VoidSettingsService Improvements
 
-- **Purpose:** 在现有的 i18nService 基础上增加从设置中恢复语言偏好的功能
-- **Interfaces:**
-  - 保留现有的所有公共接口不变
-  - 新增内部方法 `_loadLanguageFromSettings()`
-- **Dependencies:**
-  - `IVoidSettingsService` (通过依赖注入获取)
-  - 现有的翻译数据和事件系统
-- **Reuses:**
-  - 现有的 `changeLanguage()` 方法
-  - 现有的事件通知机制
-  - 现有的翻译加载逻辑
+**File**: `src/vs/workbench/contrib/void/common/voidSettingsService.ts`
 
-### Component 2: 服务依赖注入
-
-- **Purpose:** 为 i18nService 提供对 VoidSettingsService 的访问
-- **Interfaces:**
-  - 修改 i18nService 的构造函数以接受 IVoidSettingsService 参数
-  - 使用 VS Code 的服务注册机制
-- **Dependencies:**
-  - VS Code 的依赖注入容器
-  - IVoidSettingsService 接口
-- **Reuses:**
-  - 现有的服务注册模式
-  - 现有的依赖注入配置
-
-## Data Models
-
-### Language Settings Model
 ```typescript
-// 已存在于 GlobalSettings 中
-interface GlobalSettings {
-  // ... 其他设置
-  language?: SupportedLanguage; // 'en-US' | 'zh-CN'
-  // ... 其他设置
-}
+class VoidSettingsService extends Disposable implements IVoidSettingsService {
+    private _onDidChangeLanguage = new Emitter<SupportedLanguage>();
+    readonly onDidChangeLanguage = this._onDidChangeLanguage.event;
 
-// SupportedLanguage 类型已存在
-type SupportedLanguage = 'en-US' | 'zh-CN';
-```
+    constructor(
+        @IStorageService private readonly _storageService: IStorageService,
+        @IEncryptionService private readonly _encryptionService: IEncryptionService,
+        @IMetricsService private readonly _metricsService: IMetricsService,
+        @II18nService private readonly _i18nService: I18nService, // 添加I18nService依赖
+    ) {
+        super()
+        this.state = defaultState()
 
-### Service Integration Model
-```typescript
-// 扩展的 I18nServiceImpl 构造函数
-class I18nServiceImpl implements I18nService {
-  constructor(
-    @IVoidSettingsService private readonly _voidSettingsService: IVoidSettingsService
-  ) {
-    // 现有的初始化逻辑
-    this.initializeTranslations();
-  }
-
-  private async _loadLanguageFromSettings(): Promise<void> {
-    // 从 VoidSettingsService 中读取用户语言偏好
-    const savedLanguage = this._voidSettingsService.state.globalSettings.language;
-    if (savedLanguage && savedLanguage !== 'en-US') {
-      await this.changeLanguage(savedLanguage);
+        // 立即初始化语言设置
+        this._initializeLanguageFromStorage()
     }
-  }
+
+    private async _initializeLanguageFromStorage(): Promise<void> {
+        try {
+            const savedState = await this._readState();
+            const savedLanguage = savedState.globalSettings.language;
+
+            if (savedLanguage && savedLanguage !== this._i18nService.getCurrentLanguage()) {
+                await this._i18nService.changeLanguage(savedLanguage);
+            }
+        } catch (error) {
+            console.warn('Failed to initialize language from storage:', error);
+        }
+    }
+
+    setGlobalSetting: SetGlobalSettingFn = async (settingName, newVal) => {
+        const oldVal = this.state.globalSettings[settingName as keyof GlobalSettings];
+
+        const newState: VoidSettingsState = {
+            ...this.state,
+            globalSettings: {
+                ...this.state.globalSettings,
+                [settingName]: newVal
+            }
+        }
+
+        this.state = _validatedModelState(newState)
+        await this._storeState()
+        this._onDidChangeState.fire()
+
+        // 特殊处理语言设置变更
+        if (settingName === 'language' && oldVal !== newVal) {
+            await this._handleLanguageChange(newVal as SupportedLanguage);
+        }
+    }
+
+    private async _handleLanguageChange(newLanguage: SupportedLanguage): Promise<void> {
+        try {
+            await this._i18nService.changeLanguage(newLanguage);
+            this._onDidChangeLanguage.fire(newLanguage);
+
+            // 记录语言变更事件
+            this._metricsService.track('language_changed', {
+                from: this._i18nService.getCurrentLanguage(),
+                to: newLanguage
+            });
+        } catch (error) {
+            console.error('Failed to change language:', error);
+            // 回滚设置
+            await this.setGlobalSetting('language', this._i18nService.getCurrentLanguage());
+        }
+    }
 }
 ```
 
-## Error Handling
+#### 1.2 I18nService Enhancement
 
-### Error Scenarios
+**File**: `src/vs/workbench/contrib/void/common/i18n/i18nService.ts`
 
-1. **设置读取失败**:
-   - **Handling**: 捕获异常，记录警告日志，回退到默认语言
-   - **User Impact**: 用户看到英文界面，但应用正常工作
+```typescript
+class I18nServiceImpl implements I18nService {
+    private _currentLanguage: SupportedLanguage = 'en-US';
+    private _onDidChangeLanguage = new Emitter<SupportedLanguage>();
+    private _isInitialized = false;
 
-2. **设置数据损坏**:
-   - **Handling**: 验证语言代码格式，无效时使用默认值
-   - **User Impact**: 自动回退到英文，用户可以重新设置
+    async initialize(): Promise<void> {
+        if (this._isInitialized) return;
 
-3. **服务依赖不可用**:
-   - **Handling**: 检查 VoidSettingsService 可用性，必要时延迟初始化
-   - **User Impact**: 可能短暂显示默认语言，设置系统恢复后自动应用用户偏好
+        // 加载默认语言包
+        await this.loadTranslations(this._currentLanguage);
+        this._isInitialized = true;
+    }
 
-4. **并发初始化冲突**:
-   - **Handling**: 使用锁机制防止重复初始化
-   - **User Impact**: 无感知，确保一致的初始化顺序
+    async changeLanguage(language: SupportedLanguage): Promise<void> {
+        if (this._currentLanguage === language) return;
 
-### 错误恢复策略
+        try {
+            await this.loadTranslations(language);
+            const oldLanguage = this._currentLanguage;
+            this._currentLanguage = language;
+            this._onDidChangeLanguage.fire(language);
 
-- **渐进式降级**：从最佳体验逐步降级到基本功能
-- **透明恢复**：错误情况下自动恢复，不需要用户干预
-- **日志记录**：记录关键错误用于调试，但不影响用户体验
+            // 记录语言变更
+            console.log(`Language changed from ${oldLanguage} to ${language}`);
+        } catch (error) {
+            console.error(`Failed to change language to ${language}:`, error);
+            throw error;
+        }
+    }
 
-## Testing Strategy
+    getCurrentLanguage(): SupportedLanguage {
+        return this._currentLanguage;
+    }
 
-### Unit Testing
+    // 提供同步设置语言的方法（用于初始化）
+    _setCurrentLanguage(language: SupportedLanguage): void {
+        if (!this._isInitialized) {
+            this._currentLanguage = language;
+        }
+    }
+}
+```
 
-- **I18nServiceImpl 测试**:
-  - 测试从设置中正确读取语言偏好
-  - 测试设置不存在时的默认行为
-  - 测试设置数据格式错误的处理
-  - 测试并发初始化的安全性
+### 2. UI Component Enhancements
 
-- **语言持久化逻辑测试**:
-  - 测试语言设置的保存和加载
-  - 测试不同语言代码的处理
-  - 测试事件触发的正确性
+#### 2.1 LanguageSettings Component
 
-### Integration Testing
+**File**: `src/vs/workbench/contrib/void/browser/react/src/void-settings-tsx/Settings.tsx`
 
-- **服务集成测试**:
-  - 测试 i18nService 与 VoidSettingsService 的集成
-  - 测试完整的设置保存和恢复流程
-  - 测试应用重启后的语言状态
+```typescript
+export const LanguageSettings = () => {
+    const { t } = useI18n();
+    const { currentLanguage, setLanguage } = useLanguageSettings();
+    const accessor = useAccessor();
+    const voidSettingsService = accessor.get('IVoidSettingsService');
+    const [isChanging, setIsChanging] = useState(false);
+    const [changeStatus, setChangeStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-- **UI 集成测试**:
-  - 测试 LanguageSettings 组件与后端的完整交互
-  - 测试语言切换的即时反馈
-  - 测试设置页面的状态同步
+    // 监听语言设置变更事件
+    useEffect(() => {
+        const disposable = voidSettingsService.onDidChangeLanguage((newLanguage) => {
+            setLanguage(newLanguage);
+            setChangeStatus('success');
+            setTimeout(() => setChangeStatus('idle'), 2000);
+        });
 
-### End-to-End Testing
+        return () => disposable.dispose();
+    }, [voidSettingsService, setLanguage]);
 
-- **用户场景测试**:
-  1. 用户首次使用，选择中文，重启应用后验证语言保持
-  2. 用户从中文切换到英文，验证界面立即更新
-  3. 用户清除设置，验证应用恢复默认语言
-  4. 应用异常关闭后重启，验证语言设置正常恢复
+    // 确保UI状态与服务状态同步
+    useEffect(() => {
+        const serviceLanguage = voidSettingsService.getGlobalSetting('language');
+        if (serviceLanguage && serviceLanguage !== currentLanguage) {
+            setLanguage(serviceLanguage);
+        }
+    }, [currentLanguage, setLanguage, voidSettingsService]);
 
-- **边界条件测试**:
-  - 测试设置文件损坏的情况
-  - 测试服务初始化失败的情况
-  - 测试并发操作的语言状态一致性
+    const handleLanguageChange = useCallback(async (newLanguage: 'zh-CN' | 'en-US') => {
+        if (newLanguage === currentLanguage || isChanging) return;
 
-### 测试环境
+        setIsChanging(true);
+        try {
+            await voidSettingsService.setGlobalSetting('language', newLanguage);
+            // 成功状态由事件监听器处理
+        } catch (error) {
+            console.error('Failed to change language:', error);
+            setChangeStatus('error');
+            setTimeout(() => setChangeStatus('idle'), 3000);
+        } finally {
+            setIsChanging(false);
+        }
+    }, [currentLanguage, isChanging, voidSettingsService]);
 
-- **单元测试**: 使用 Jest 进行组件级测试
-- **集成测试**: 在 VS Code 扩展测试环境中进行
-- **E2E 测试**: 使用完整的 VS Code 实例进行用户场景测试
+    const languageOptions = [
+        { value: 'en-US' as const, label: t('settings.language.english') },
+        { value: 'zh-CN' as const, label: t('settings.language.chinese') }
+    ];
+
+    return (
+        <div className='flex flex-col gap-4'>
+            <div className='max-w-48 w-full'>
+                <VoidCustomDropdownBox
+                    options={languageOptions}
+                    selectedOption={languageOptions.find(option => option.value === currentLanguage)}
+                    onChangeOption={(option) => option && handleLanguageChange(option.value)}
+                    disabled={isChanging}
+                />
+            </div>
+
+            {/* 状态反馈 */}
+            <div className='text-sm'>
+                {isChanging && (
+                    <div className='text-blue-500'>
+                        {t('settings.language.changing')}
+                    </div>
+                )}
+                {changeStatus === 'success' && (
+                    <div className='text-green-500'>
+                        {t('settings.language.changeSuccess')}
+                    </div>
+                )}
+                {changeStatus === 'error' && (
+                    <div className='text-red-500'>
+                        {t('settings.language.changeError')}
+                    </div>
+                )}
+            </div>
+
+            <div className='text-void-fg-3 text-xs mt-2'>
+                {t('settings.language.restartNote')}
+            </div>
+        </div>
+    );
+};
+```
+
+#### 2.2 useLanguageSettings Hook
+
+**File**: `src/vs/workbench/contrib/void/browser/react/src/hooks/useLanguageSettings.ts`
+
+```typescript
+export const useLanguageSettings = () => {
+    const { t, changeLanguage, currentLanguage } = useI18n();
+    const settingsState = useSettingsState();
+    const accessor = useAccessor();
+    const voidSettingsService = accessor.get('IVoidSettingsService');
+
+    // 同步设置服务中的语言
+    useEffect(() => {
+        const savedLanguage = settingsState.globalSettings.language;
+        if (savedLanguage && savedLanguage !== currentLanguage) {
+            changeLanguage(savedLanguage);
+        }
+    }, [settingsState.globalSettings.language, currentLanguage, changeLanguage]);
+
+    const setLanguage = useCallback(async (newLanguage: SupportedLanguage) => {
+        try {
+            await changeLanguage(newLanguage);
+            await voidSettingsService.setGlobalSetting('language', newLanguage);
+        } catch (error) {
+            console.error('Failed to set language:', error);
+        }
+    }, [changeLanguage, voidSettingsService]);
+
+    return {
+        currentLanguage,
+        setLanguage,
+        t
+    };
+};
+```
+
+### 3. Service Registration and Dependencies
+
+#### 3.1 Dependency Injection Updates
+
+**File**: `src/vs/workbench/contrib/void/common/void.contribution.ts`
+
+```typescript
+// 确保I18nService在VoidSettingsService之前注册
+registerSingleton(II18nService, I18nService, InstantiationType.Eager);
+registerSingleton(IVoidSettingsService, VoidSettingsService, InstantiationType.Eager);
+```
+
+#### 3.2 Service Initialization Sequence
+
+```typescript
+// 在应用启动时按正确顺序初始化服务
+async function initializeServices() {
+    // 1. 首先初始化存储和加密服务
+    await storageService.initialize();
+
+    // 2. 初始化I18nService（使用默认语言）
+    const i18nService = serviceAccessor.get(II18nService);
+    await i18nService.initialize();
+
+    // 3. 初始化VoidSettingsService（会自动从存储中读取语言设置）
+    const voidSettingsService = serviceAccessor.get(IVoidSettingsService);
+    await voidSettingsService.readAndInitializeState();
+
+    // 4. 其他服务...
+}
+```
+
+### 4. Error Handling and Validation
+
+#### 4.1 Language Validation
+
+```typescript
+function validateLanguageSetting(value: any): SupportedLanguage {
+    const validLanguages: SupportedLanguage[] = ['zh-CN', 'en-US'];
+
+    if (typeof value === 'string' && validLanguages.includes(value as SupportedLanguage)) {
+        return value as SupportedLanguage;
+    }
+
+    console.warn(`Invalid language setting: ${value}, falling back to default`);
+    return 'en-US';
+}
+```
+
+#### 4.2 Error Recovery Strategy
+
+```typescript
+private async _handleStorageError(error: Error): Promise<void> {
+    console.error('Settings storage error:', error);
+
+    // 尝试使用默认设置重新初始化
+    this.state = defaultState();
+    await this._storeState();
+
+    // 通知用户
+    this._notificationService.warn(
+        'Settings have been reset due to a storage error. Please reconfigure your preferences.'
+    );
+}
+```
+
+### 5. Testing Strategy
+
+#### 5.1 Unit Tests
+
+```typescript
+describe('VoidSettingsService Language Settings', () => {
+    it('should persist language setting to storage', async () => {
+        const service = createTestService();
+        await service.setGlobalSetting('language', 'zh-CN');
+
+        const savedLanguage = service.getGlobalSetting('language');
+        expect(savedLanguage).toBe('zh-CN');
+    });
+
+    it('should restore language setting on restart', async () => {
+        // 模拟应用重启场景
+        const storage = new MockStorageService();
+
+        // 第一次运行：保存语言设置
+        let service1 = new VoidSettingsService(storage, encryptionService, metricsService, i18nService);
+        await service1.setGlobalSetting('language', 'zh-CN');
+
+        // 第二次运行：验证语言设置被还原
+        let service2 = new VoidSettingsService(storage, encryptionService, metricsService, i18nService);
+        await service2.readAndInitializeState();
+
+        expect(service2.getGlobalSetting('language')).toBe('zh-CN');
+    });
+});
+```
+
+#### 5.2 Integration Tests
+
+```typescript
+describe('Language Settings Integration', () => {
+    it('should sync UI with service state', async () => {
+        const { render } = renderWithProviders(<LanguageSettings />);
+
+        // 模拟服务中的语言设置变更
+        const service = getService(IVoidSettingsService);
+        await service.setGlobalSetting('language', 'zh-CN');
+
+        // 验证UI更新
+        await waitFor(() => {
+            expect(screen.getByText('中文')).toBeInTheDocument();
+        });
+    });
+});
+```
+
+## Implementation Phases
+
+### Phase 1: Service Layer Fixes
+1. 修改VoidSettingsService构造函数，添加I18nService依赖
+2. 实现语言设置变更的特殊处理逻辑
+3. 添加语言变更事件通知机制
+
+### Phase 2: UI Component Updates
+1. 更新LanguageSettings组件，添加状态同步
+2. 实现语言变更反馈机制
+3. 改进错误处理和用户体验
+
+### Phase 3: Service Registration
+1. 确保正确的服务初始化顺序
+2. 添加依赖注入配置
+3. 实现优雅的服务启动流程
+
+### Phase 4: Testing and Validation
+1. 编写单元测试覆盖所有场景
+2. 实现集成测试验证端到端流程
+3. 进行用户接受测试
+
+## Risk Assessment
+
+### Technical Risks
+- **Low**: 修改现有服务可能影响其他功能
+- **Mitigation**: 保持API兼容性，添加充分的测试
+
+### User Experience Risks
+- **Medium**: 语言切换可能需要重启应用
+- **Mitigation**: 清晰的用户提示和状态反馈
+
+### Performance Risks
+- **Low**: 额外的语言检查可能影响启动性能
+- **Mitigation**: 异步加载和缓存机制
+
+## Success Criteria
+
+1. **Functional**: 语言设置在应用重启后正确保持
+2. **Performance**: 语言设置操作响应时间<100ms
+3. **Reliability**: 99.9%的设置保存成功率
+4. **User Experience**: 清晰的状态反馈和错误处理
+5. **Compatibility**: 不破坏现有功能和API
+
+## Monitoring and Metrics
+
+### Key Performance Indicators
+- 语言设置保存成功率
+- 应用启动时语言设置还原时间
+- 用户语言切换操作频率
+- 错误报告和异常情况
+
+### Logging Strategy
+- 语言变更操作日志
+- 设置读取/写入错误日志
+- 服务初始化时序日志
+- 用户操作统计日志
+
+这个设计方案确保了语言设置的持久化功能，同时保持了系统的稳定性和性能。通过分阶段实施和充分的测试，可以最小化风险并提供可靠的用户体验。

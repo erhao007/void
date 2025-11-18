@@ -11,9 +11,25 @@ import { registerSingleton, InstantiationType } from '../../../../platform/insta
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { IMetricsService } from './metricsService.js';
+// import { II18nService } from './i18n/i18nService.js'; // TODO: Re-enable when dependency injection is properly handled
+import type { SupportedLanguage } from './i18n/i18nService.js';
 import { defaultProviderSettings, getModelCapabilities, ModelOverrides } from './modelCapabilities.js';
 import { VOID_SETTINGS_STORAGE_KEY } from './storageKeys.js';
 import { defaultSettingsOfProvider, FeatureName, ProviderName, ModelSelectionOfFeature, SettingsOfProvider, SettingName, providerNames, ModelSelection, modelSelectionsEqual, featureNames, VoidStatefulModelInfo, GlobalSettings, GlobalSettingName, defaultGlobalSettings, ModelSelectionOptions, OptionsOfModelSelection, ChatMode, OverridesOfModel, defaultOverridesOfModel, MCPUserStateOfName as MCPUserStateOfName, MCPUserState } from './voidSettingsTypes.js';
+
+/**
+ * Validate language setting value
+ */
+function validateLanguageSetting(value: any): SupportedLanguage {
+	const validLanguages: ('zh-CN' | 'en-US')[] = ['zh-CN', 'en-US'];
+
+	if (typeof value === 'string' && validLanguages.includes(value as 'zh-CN' | 'en-US')) {
+		return value as 'zh-CN' | 'en-US';
+	}
+
+	console.warn(`Invalid language setting: ${value}, falling back to default 'en-US'`);
+	return 'en-US';
+}
 
 
 // name is the name in the dropdown
@@ -292,6 +308,11 @@ class VoidSettingsService extends Disposable implements IVoidSettingsService {
 			
 			// add autoAcceptLLMChanges feature
 			if (readS.globalSettings.autoAcceptLLMChanges === undefined) readS.globalSettings.autoAcceptLLMChanges = false;
+
+			// Validate language setting
+			if (readS.globalSettings.language) {
+				readS.globalSettings.language = validateLanguageSetting(readS.globalSettings.language);
+			}
 		}
 		catch (e) {
 			readS = defaultState()
@@ -340,10 +361,51 @@ class VoidSettingsService extends Disposable implements IVoidSettingsService {
 		this.state = _stateWithMergedDefaultModels(this.state)
 		this.state = _validatedModelState(this.state);
 
+		// Initialize language settings from storage
+		// TODO: Re-enable when dependency injection is properly handled
+		// await this._initializeLanguageFromSettings();
 
 		this._resolver();
 		this._onDidChangeState.fire();
 
+	}
+
+	
+	/**
+	 * Handle language setting changes
+	 */
+	private async _handleLanguageChange(newLanguage: 'zh-CN' | 'en-US'): Promise<void> {
+		try {
+			// TODO: Implement I18nService sync when dependency injection is properly handled
+			// await this._i18nService.changeLanguage(newLanguage);
+
+			// Track language change event
+			this._metricsService.capture('language_changed', {
+				from: 'unknown', // TODO: Get from I18nService when available
+				to: newLanguage,
+				timestamp: Date.now()
+			});
+
+			console.log(`Language setting changed to: ${newLanguage} (I18nService sync disabled)`);
+		} catch (error) {
+			console.error('Failed to change language setting:', error);
+
+			// TODO: Implement rollback when I18nService integration is complete
+			const currentLanguage = 'en-US'; // Default fallback
+			if (currentLanguage !== this.state.globalSettings.language) {
+				// This is a fallback - we need to update the state without calling setGlobalSetting again to avoid infinite loop
+				const rollbackState: VoidSettingsState = {
+					...this.state,
+					globalSettings: {
+						...this.state.globalSettings,
+						language: currentLanguage
+					}
+				};
+				this.state = _validatedModelState(rollbackState);
+				await this._storeState();
+				this._onDidChangeState.fire();
+			}
+		}
 	}
 
 
@@ -409,17 +471,31 @@ class VoidSettingsService extends Disposable implements IVoidSettingsService {
 		this.setModelSelectionOfFeature('SCM', deepClone(this.state.modelSelectionOfFeature['Chat']))
 	}
 
-	setGlobalSetting: SetGlobalSettingFn = async (settingName, newVal) => {
+	setGlobalSetting: SetGlobalSettingFn = async <T extends GlobalSettingName>(settingName: T, newVal: GlobalSettings[T]) => {
+		const oldVal = this.state.globalSettings[settingName as keyof GlobalSettings];
+
+		// Validate language setting
+		let validatedValue = newVal;
+		if (settingName === 'language') {
+			const validatedLanguage = validateLanguageSetting(newVal as SupportedLanguage);
+			validatedValue = validatedLanguage as GlobalSettings[T];
+		}
+
 		const newState: VoidSettingsState = {
 			...this.state,
 			globalSettings: {
 				...this.state.globalSettings,
-				[settingName]: newVal
+				[settingName]: validatedValue
 			}
 		}
 		this.state = _validatedModelState(newState)
 		await this._storeState()
 		this._onDidChangeState.fire()
+
+		// Special handling for language setting changes
+		if (settingName === 'language' && oldVal !== validatedValue) {
+			await this._handleLanguageChange(validatedValue as 'zh-CN' | 'en-US');
+		}
 
 		// hooks
 		if (this.state.globalSettings.syncApplyToChat) this._onUpdate_syncApplyToChat()
